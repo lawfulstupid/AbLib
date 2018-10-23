@@ -1,6 +1,6 @@
 -- Provides basic parsers and combinators to build complex parsers.
 
-module AbLib.Util.Parser where
+module AbLib.Data.Parser where
 
 import AbLib.Util.Safe
 import Data.List (nub, sort, isPrefixOf)
