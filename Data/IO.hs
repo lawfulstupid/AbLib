@@ -1,6 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
-module Util.IO where
+module AbLib.Data.IO where
 
 import System.Info (os)
 import Data.Char (chr)
