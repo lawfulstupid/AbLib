@@ -1,108 +1,109 @@
-module Util.Parser where
+-- Provides basic parsers and combinators to build complex parsers.
 
-import Data.List (nub, sort)
+module AbLib.Util.Parser where
+
+import AbLib.Util.Safe
+import Data.List (nub, sort, isPrefixOf)
 
 type Parser a = String -> [(a, String)]
 
--- | Fully implement a Parser
-parser :: Eq a => Parser a -> String -> a
-parser p s = case nub . filter (null . snd) $ p s of 
+-- Fully implement a Parser
+parse :: Eq a => Parser a -> String -> a
+parse p s = case nub . filter (null . snd) $ p s of 
    [x] -> fst x
    _   -> errorWithoutStackTrace "no parse"
 
-{- Make changes to a string before parsing. -}
-preprocess :: [(String, String)] -> String -> String
-preprocess ts = aux ts where
-   aux :: [(String, String)] -> String -> String
-   aux [] []    = []
-   aux [] (c:s) = c : aux ts s
-   aux (f:fs) s = aux fs $ case match (fst f) s of
-      [(_,r)] -> snd f ++ r
-      [     ] -> s
+-- Make simple substitutions to a string before parsing.
+substitute :: [(String, String)] -> String -> String
+substitute _ [] = []
+substitute mp s = case (options mp <> chars 1) s of
+   (t,r):_ -> t ++ substitute mp r
 
-{-- PARSER COMBINATORS --}
+-------- PARSER COMBINATORS --------
 
--- | Distinct choice of Parsers
-(<|>) :: Parser a -> Parser a -> Parser a
-f <|> g = \s -> f s ++ g s
+-- Option between two Parsers.
+(<>) :: Parser a -> Parser a -> Parser a
+f <> g = \s -> f s ++ g s
 
--- | Sequence Parsers, keep second result
+-- Sequence Parsers, keep second result.
 (&>) :: Parser a -> Parser b -> Parser b
 f &> g = \s -> [ (x,q) | (_,r) <- f s, (x,q) <- g r ]
 
--- convenient synonym
+-- Convenient synonym.
 (&) :: Parser a -> Parser b -> Parser b
 (&) = (&>)
 
--- | Sequence Parsers, keep first result
+-- Sequence Parsers, keep first result.
 (<&) :: Parser a -> Parser b -> Parser a
 f <& g = \s -> [ (x,q) | (x,r) <- f s, (_,q) <- g r ]
 
--- | Sequence Parsers, combine results
+-- Sequence Parsers, combine results
 (<&>) :: Parser a -> Parser b -> Parser (a,b)
 f <&> g = \s -> [ ((x,y),q) | (x,r) <- f s, (y,q) <- g r ]
 
--- | Transform results of parsing
+-- Transform results of parsing.
 (~>) :: Parser a -> (a -> b) -> Parser b
 f ~> t = \s -> [ (t x, r) | (x, r) <- f s ]
 
--- | Transform results of parsing
+-- Transform results of parsing (in reverse).
 (<~) :: (a -> b) -> Parser a -> Parser b
 t <~ f = \s -> [ (t x, r) | (x, r) <- f s ]
 
--- | One or more
+-- Repeat a Parser at least once.
 many :: Parser a -> Parser a
 many f = f <> (f & many f)
 
-{- Zero or more -}
+-- Repeat a parser any number of times.
 some :: Parser a -> Parser a
 some = optional . many
 
--- | Zero or one.
+-- Repeat a parser at most once.
+-- Only use in a sequence where this result is to be discarded.
 optional ::  Parser a -> Parser a
-optional f = nothing <> f
+optional f = accept undefined <> f
 
--- | Combines a collection of parsers disjunctively
+-- Combines a collection of parsers disjunctively.
 parallel :: Foldable t => t (Parser a) -> Parser a
 parallel = foldr (<>) reject
 
-{- Accepts the first successful parser from a list. -}
+-- Accepts the first successful parser from a list.
 firstRule :: [Parser a] -> Parser a
 firstRule []     _ = []
 firstRule (p:ps) s = case p s of
    [] -> firstRule ps s
    xs -> xs
 
-{- Parses without consuming characters. -}
+-- Use a Parser without consuming input.
 lookAhead :: Parser a -> Parser a
 lookAhead f = \s -> [ (x,s) | (x,r) <- f s ]
 
-{-- BASIC PARSERS --}
+-------- BASIC PARSERS --------
 
-{- Fails on all input. -}
+-- Fails on all input.
 reject :: Parser a
 reject = const []
 
-{- Consumes no tokens, "parsing" the supplied value. -}
+-- Consumes no tokens, "parsing" the supplied value.
 accept :: a -> Parser a
-accept x = return . (,) x
+accept x = \s -> [(x,s)]
 
-{- Accepts a fixed number of any characters. -}
+-- Accepts a fixed number of any characters. Fails if the supplied string does not have sufficient characters.
 chars :: Int -> Parser String
-chars n = return . splitAt n
+chars n = \ s -> let
+   s' = splitAt n s
+   in if n == length (fst s') then [s'] else []
 
-{- Match a given string. -}
+-- Match a given string.
 match :: String -> Parser String
-match s = filter ((==) s . fst) . return . splitAt (length s)
+match t = \ s -> let
+   s' = splitAt (length t) s
+   in if t == fst s' then [s'] else []
 
-{- Uses a lookup list as a Parser. -}
-options :: [(String,a)] -> Parser a
-options = foldr1 (<>) . map (\(s,x) -> match s ~> const x)
+-- Uses a lookup list as a Parser.
+options :: [(String, a)] -> Parser a
+options = foldr1 (<>) . map (\ (s,x) -> match s ~> const x)
 
-{- Parse a list of items.
- - Arg 1: Parser for items.
- - Arg 2: Delimiter string. 
- -}
+-- Parse a list of items. Args: Parser for items; Delimiter string.
 list :: Parser a -> String -> Parser [a]
 list item delim = let
    emptyLst = accept []
@@ -110,30 +111,26 @@ list item delim = let
    lstTail = emptyLst <> (match delim & list item delim)
    in emptyLst <> ((lstHead <&> lstTail) ~> uncurry (:))
 
-{- OFTEN-USED PARSERS -}
+-------- OFTEN-USED PARSERS --------
 
-{- Matches an empty string only. Make sure you discard this result! -}
-nothing :: Parser a
-nothing = accept undefined
-
-{- Matches any String. -}
+-- Matches any String.
 anything :: Parser String
 anything = \s -> [splitAt i s | i <- [0 .. length s]]
 
-{- Matches any character. -}
+-- Matches any character.
 anyChar :: Parser Char
 anyChar [   ] = []
 anyChar (c:s) = [(c,s)]
 
-{- Matches one of the given characters. -}
+-- Matches one of the given characters.
 oneOf :: [Char] -> Parser Char
 oneOf cs = parallel [match [c] ~> const c | c <- cs]
 
-{- Match a space. -}
+-- Match a space.
 space :: Parser String
 space = match " "
 
-{- Match a block of contiguous whitespace. -}
+-- Match a block of contiguous whitespace.
 spaces :: Parser String
 spaces = many space
 
