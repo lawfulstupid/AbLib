@@ -24,15 +24,59 @@ setAll :: [Int] -> [a] -> a -> [a]
 setAll [    ] xs _ = xs
 setAll (i:is) xs x = setAll is (set i xs x) x
 
--- | Equal to `elem t xs`
+-- delimit a list
+delim :: Eq a => [a] -> [a] -> [[a]]
+delim _ [] = [[]]
+delim d (x:xs) = let
+   h:t = delim d xs
+   in if any (x==) d
+      then [] : (h : t)
+      else (x : h) : t
+
+-- Zips up to length of longest list, using defaults to finish the shorter list.
+zipDef :: (a -> b -> c) -> (a,b) -> [a] -> [b] -> [c]
+zipDef _ (_,_) []     []     = []
+zipDef f (a,b) (x:xs) []     = f x b : zipDef f (a,b) xs []
+zipDef f (a,b) []     (y:ys) = f a y : zipDef f (a,b) [] ys
+zipDef f (a,b) (x:xs) (y:ys) = f x y : zipDef f (a,b) xs ys
+
+-- Calculates the frequency of each item in a list.
+freq :: Eq a => [a] -> [(a, Int)]
+freq [] = []
+freq (x:xs) = (x, 1 + count (== x) xs) : freq (filter (/= x) xs)
+
+-- Counts the number of satisfactory items in a list.
+count :: (a -> Bool) -> [a] -> Int
+count f l = length $ filter f l
+
+-- Picks a number of random items from a list, without repetition.
+sample :: Int -> [a] -> IO [a]
+sample k xs = do
+   ar <- newArray n xs
+   forM [1..k] $ \i -> do
+      j <- randomRIO (i,n)
+      vi <- readArray ar i
+      vj <- readArray ar j
+      writeArray ar j vi
+      return vj
+   where
+      n = length xs
+      newArray :: Int -> [a] -> IO (IOArray Int a)
+      newArray n xs = newListArray (1,n) xs
+
+-- Shuffle a list.
+shuffle :: [a] -> IO [a]
+shuffle xs = sample (length xs) xs
+
+-- Uses binary search to determine if a list contains a given item.
 binSearch :: Ord a => a -> [a] -> Bool
-binSearch t xs = Nothing /= binSearchStrong t xs
+binSearch = isJust . binSearchStrong
 
--- | Equal to `elem t xs`
+-- Uses exponential search to determine if a list contains a given item.
 expSearch :: Ord a => a -> [a] -> Bool
-expSearch t xs = Nothing /= expSearchStrong t xs
+expSearch = isJust . expSearchStrong
 
--- | Returns largest `i` such that `xs !! i <= t`
+-- Uses binary search to find largest index i such that (xs !! i <= t).
 binSearchWeak :: (Ord a) => a -> [a] -> Maybe Int
 binSearchWeak _ [] = Nothing
 binSearchWeak t [m] = if t < m then Nothing else Just 0
@@ -43,7 +87,7 @@ binSearchWeak t xs = let
       then binSearchWeak t a
       else fmap (+ length a) (binSearchWeak t b)
 
--- | Returns largest `i` such that `xs !! i <= t`
+-- Uses exponential search to find largest index i such that (xs !! i <= t)
 expSearchWeak :: (Ord a) => a -> [a] -> Maybe Int
 expSearchWeak t xs = fmap (+ d) $ binSearchWeak t sub
    where
@@ -56,7 +100,7 @@ expSearchWeak t xs = fmap (+ d) $ binSearchWeak t sub
          then (0, a)
          else (k + length a, l)
 
--- | Returns `i` such that `xs !! i == t`
+-- Uses binary search to find the index of a given item in a list.
 binSearchStrong :: (Ord a) => a -> [a] -> Maybe Int
 binSearchStrong t xs = do
    i <- binSearchWeak t xs
@@ -64,11 +108,10 @@ binSearchStrong t xs = do
    then Just i
    else Nothing
 
--- | Return `i` such that `xs !! i == t`
+-- Uses exponential search to find the index of a given item in a list.
 expSearchStrong :: (Ord a) => a -> [a] -> Maybe Int
 expSearchStrong t xs = do
    i <- expSearchWeak t xs
    if xs !! i == t
    then Just i
    else Nothing
-
