@@ -3,8 +3,10 @@
 -- Module for extending any well-ordered numerical type to include infinite values.
 
 module AbLib.Math.Extended (
-   Extended (..), isFinite
+   Extended (..), InfinityException (..), isFinite
 ) where
+
+import Control.Exception (Exception, throw)
 
 data Extended a = NegInf | Real {real :: a} | PosInf
    deriving (Eq, Ord) -- Ord behaves really nicely here
@@ -17,8 +19,17 @@ instance Show a => Show (Extended a) where
 infsym :: String
 infsym = "Infinity"     -- can change this to something nicer later
 
-dontDoThis :: a
-dontDoThis = undefined  -- debating whether to use undefined or throw proper exception
+data InfinityException = FiniteCast
+   | BadSubtraction | BadMultiplication | BadDivision
+   deriving (Eq)
+
+instance Show (InfinityException) where
+   show FiniteCast  = "cast infinite value to finite"
+   show BadDivision = "infinity divided by infinity"
+   show BadSubtraction = "infinity minus infinity"
+   show BadMultiplication = "infinity multiplied by 0"
+
+instance Exception InfinityException
 
 nan :: Floating a => Extended a
 nan = Real $ asin 2     -- need a NaN value for Floating instance
@@ -50,14 +61,14 @@ instance (Num a, Eq a) => Num (Extended a) where
    Real _ + infval = infval
    PosInf + PosInf = PosInf
    NegInf + NegInf = NegInf
-   PosInf + NegInf = dontDoThis
+   PosInf + NegInf = throw BadSubtraction
    x + y = y + x
    
    Real x * Real y = Real (x * y)
    x * y = case signum x * signum y of
       1 -> PosInf
-      0 -> dontDoThis
-      _ -> NegInf       -- I only used a hole to make this look pretty
+      0 -> throw BadMultiplication
+      _ -> NegInf                      -- I only used a hole to make this look pretty
    
    negate (Real x) = Real $ negate x
    negate (NegInf) = PosInf
@@ -75,8 +86,10 @@ instance (Num a, Eq a) => Num (Extended a) where
 instance (Fractional a, Eq a) => Fractional (Extended a) where
    fromRational = Real . fromRational
 
-   recip (Real x) = Real $ recip x
-   recip ________ = 0
+   Real x / Real y = Real (x / y)
+   Real _ / infval = 0
+   infval / Real x = infval * Real x
+   _      / _      = throw BadDivision
 
 instance (Floating a, Eq a) => Floating (Extended a) where
    pi      = Real pi
@@ -98,11 +111,11 @@ instance (Floating a, Eq a) => Floating (Extended a) where
    
 instance Real a => Real (Extended a) where
    toRational (Real x) = toRational x
-   toRational (infval) = error "Infinity has no Rational representation"
+   toRational (infval) = throw FiniteCast
    
 instance RealFrac a => RealFrac (Extended a) where
    properFraction (Real x) = fmap Real $ properFraction x
-   properFraction (infval) = error "Infinity cannot be written as a proper fraction"
+   properFraction (infval) = throw FiniteCast
    
 instance Enum a => Enum (Extended a) where
    toEnum = Real . toEnum
@@ -112,12 +125,12 @@ instance Enum a => Enum (Extended a) where
    
 instance Integral a => Integral (Extended a) where
    toInteger (Real n) = toInteger n
-   toInteger (infval) = error "Infinity has no Integral representation"
+   toInteger (infval) = throw FiniteCast
    
    quotRem (Real n) (Real k) = (Real q, Real r) where (q,r) = quotRem n k
    quotRem (Real n) (infval) = (0, Real n)
    quotRem (infval) (Real n) = (infval * Real n, 0)
-   quotRem _ _ = error "Diving Infinity by Infinity"
+   quotRem _ _ = throw BadDivision
    
 instance Bounded (Extended a) where
    minBound = NegInf
