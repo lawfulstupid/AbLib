@@ -1,5 +1,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 
+-- Classes for defining behaviour of set types
+
 module AbLib.Set.Set where
 
 class Set s a | s -> a where

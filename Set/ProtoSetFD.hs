@@ -4,6 +4,9 @@
 {-# LANGUAGE InstanceSigs               #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE StandaloneDeriving         #-}
+
+-- prototype model for ListSet and PureSet combined using functional dependencies
+
 module Set where
 
 import Data.List (nub, elem)

@@ -1,5 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
+-- Set type for storing a finite number of discrete values.
+
 module AbLib.Set.ListSet (ListSet) where
 
 import AbLib.Sets.Set

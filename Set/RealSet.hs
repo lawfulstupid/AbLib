@@ -1,11 +1,9 @@
 {-# LANGUAGE LambdaCase, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
 
-module AbLib.Set.RealSet where
+-- Unfinished set type for storing ranges of
+-- dense values such as reals and rationals.
 
-{- 
- - This is a data structure for representing sets of reals,
- - rationals, and other dense types by using intervals.
- -}
+module AbLib.Set.RealSet where
 
 import AbLib.Set.Set
 import AbLib.Data.Tuple

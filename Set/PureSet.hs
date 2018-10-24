@@ -1,5 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
+-- Set type representing a mathematically pure set.
+-- A set is pure if and only if it is empty or all of its elements are pure.
+
 module AbLib.Set.PureSet (PureSet) where
 
 import AbLib.Sets.Set

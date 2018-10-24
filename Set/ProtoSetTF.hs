@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, StandaloneDeriving, TypeFamilies, UndecidableInstances #-}
 
+-- prototype model for ListSet and PureSet combined using type families
+
 import AbLib.Sets.IsSet
 import Data.List (nub)
 

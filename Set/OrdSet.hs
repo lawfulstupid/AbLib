@@ -1,5 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 
+-- A set type for storing ranges of Ord values.
+-- I've realised some problems with it, and am
+-- reworking it into RealSet.
+-- This was also created before AbLib so I'm not
+-- entirely sure it works, not tested it.
+
+-- TL;DR: deprecated
+
 module Math.OrdSet (
    OrdSet, Interval, Bound, BoundType (Open, Closed), -- types
    empty, singleton, total, interval,                 -- construction
