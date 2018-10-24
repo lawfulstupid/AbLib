@@ -1,4 +1,6 @@
-module Util.Random (randomsIO, randomsRIO, randomIO, randomRIO) where
+
+
+module AbLib.System.Random (randomsIO, randomsRIO, randomIO, randomRIO) where
 
 import System.Random
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module AbLib.Util.Safe where
+module AbLib.Control.Safe where
 
 import Control.Exception (SomeException, try)
 import GHC.IO (evaluate, unsafePerformIO)
