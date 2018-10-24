@@ -1,22 +1,39 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Math.Extended (
-   Extended (NegInf, Real, PosInf),
-   isFinite
+-- Module for extending any well-ordered numerical type to include infinite values.
+
+module AbLib.Math.Extended (
+   Extended (..), isFinite
 ) where
 
 data Extended a = NegInf | Real {real :: a} | PosInf
-   deriving (Eq, Ord)
+   deriving (Eq, Ord) -- Ord behaves really nicely here
+
+instance Show a => Show (Extended a) where
+   show (Real x) = show x
+   show (PosInf) = "+" ++ infsym
+   show (NegInf) = "-" ++ infsym
+
+infsym :: String
+infsym = "Infinity"     -- can change this to something nicer later
+
+dontDoThis :: a
+dontDoThis = undefined  -- debating whether to use undefined or throw proper exception
+
+nan :: Floating a => Extended a
+nan = Real $ asin 2     -- need a NaN value for Floating instance
 
 isFinite :: Extended a -> Bool
 isFinite (Real _) = True
 isFinite (infval) = False
 
+-- Doesn't always behave great, but you get the idea.
 instance Functor Extended where
    fmap f (Real x) = Real $ f x
    fmap _ (NegInf) = NegInf
    fmap _ (PosInf) = PosInf
    
+-- Not sure if Applicative instance will ever be useful, certainly doesn't make much sense.
 instance Applicative Extended where
    pure = Real
    Real f <*> x = fmap f x
@@ -29,16 +46,18 @@ instance Monad Extended where
    PosInf >>= _ = PosInf
 
 instance (Num a, Eq a) => Num (Extended a) where
-   (+) (Real x) = \case { Real y -> Real (x + y); i -> i + Real x }
-   (+) (NegInf) = \case { PosInf -> undefined;    _ -> NegInf }
-   (+) (PosInf) = \case { NegInf -> undefined;    _ -> PosInf }
+   Real x + Real y = Real (x + y)
+   Real _ + infval = infval
+   PosInf + PosInf = PosInf
+   NegInf + NegInf = NegInf
+   PosInf + NegInf = dontDoThis
+   x + y = y + x
    
-   Real x * y = if isFinite y then fmap (x *) y else y * Real x
-   NegInf * y = negate (PosInf * y)
-   PosInf * y = case signum y of
-      Real (-1) -> NegInf
-      Real ( 0) -> undefined
-      Real ( 1) -> PosInf
+   Real x * Real y = Real (x * y)
+   x * y = case signum x * signum y of
+      1 -> PosInf
+      0 -> dontDoThis
+      _ -> NegInf       -- I only used a hole to make this look pretty
    
    negate (Real x) = Real $ negate x
    negate (NegInf) = PosInf
@@ -48,34 +67,33 @@ instance (Num a, Eq a) => Num (Extended a) where
    abs (infval) = PosInf
    
    signum (Real x) = Real $ signum x
-   signum (NegInf) = Real (-1)
-   signum (PosInf) = Real ( 1)
+   signum (NegInf) = -1
+   signum (PosInf) =  1
    
    fromInteger n = Real $ fromInteger n
    
 instance (Fractional a, Eq a) => Fractional (Extended a) where
    fromRational = Real . fromRational
-   recip x = if isFinite x then fmap recip x else Real 0
 
-nan :: Floating a => Extended a
-nan = Real $ asin 2
+   recip (Real x) = Real $ recip x
+   recip ________ = 0
 
 instance (Floating a, Eq a) => Floating (Extended a) where
    pi      = Real pi
-   exp     = \case { NegInf -> Real 0; x -> fmap exp x  }
-   log     = \case { NegInf -> nan;    x -> fmap log x  }
-   sqrt    = \case { NegInf -> nan;    x -> fmap sqrt x }
-   sin x   = if isFinite x then fmap sin   x else nan
-   cos x   = if isFinite x then fmap cos   x else nan
-   tan x   = if isFinite x then fmap tan   x else nan
-   asin x  = if isFinite x then fmap asin  x else nan
-   acos x  = if isFinite x then fmap acos  x else nan
-   atan x  = if isFinite x then fmap atan  x else (signum x) * pi / (fromInteger 2)
+   exp     = \case { NegInf -> 0;   x -> fmap exp x  }
+   log     = \case { NegInf -> nan; x -> fmap log x  }
+   sqrt    = \case { NegInf -> nan; x -> fmap sqrt x }
+   sin  x  = if isFinite x then fmap sin  x else nan
+   cos  x  = if isFinite x then fmap cos  x else nan
+   tan  x  = if isFinite x then fmap tan  x else nan
+   asin x  = if isFinite x then fmap asin x else nan
+   acos x  = if isFinite x then fmap acos x else nan
+   atan x  = if isFinite x then fmap atan x else (signum x) * pi / (fromInteger 2)
    sinh    = fmap sinh
    asinh   = fmap asinh
    cosh    = \case { NegInf -> PosInf; x -> fmap cosh x  }
    acosh   = \case { NegInf -> nan;    x -> fmap acosh x }
-   tanh x  = if isFinite x then fmap tanh  x else signum x
+   tanh  x = if isFinite x then fmap tanh  x else signum x
    atanh x = if isFinite x then fmap atanh x else nan
    
 instance Real a => Real (Extended a) where
@@ -97,16 +115,10 @@ instance Integral a => Integral (Extended a) where
    toInteger (infval) = error "Infinity has no Integral representation"
    
    quotRem (Real n) (Real k) = (Real q, Real r) where (q,r) = quotRem n k
-   quotRem (Real n) (infval) = (Real 0, Real n)
-   quotRem (infval) (Real _) = (infval, Real 0)
-   quotRem _ _ = error "Infinity divided by Infinity"
+   quotRem (Real n) (infval) = (0, Real n)
+   quotRem (infval) (Real n) = (infval * Real n, 0)
+   quotRem _ _ = error "Diving Infinity by Infinity"
    
 instance Bounded (Extended a) where
    minBound = NegInf
    maxBound = PosInf
-
-instance Show a => Show (Extended a) where
-   show (Real x) = show x
-   show (PosInf) = "+infinity"
-   show (NegInf) = "-infinity"
-
