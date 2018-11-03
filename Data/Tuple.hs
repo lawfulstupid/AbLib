@@ -23,3 +23,6 @@ infixr 0 $##
 (##$##) :: (a0 -> a1, b0 -> b1, c0 -> c1) -> (a0, b0, c0) -> (a1, b1, c1)
 (f,g,h) ##$## (x,y,z) = (f x, g y, h z)
 infixr 0 ##$##
+
+swap :: (a,b) -> (b,a)
+swap (x,y) = (y,x) 
