@@ -25,4 +25,10 @@ infixr 0 $##
 infixr 0 ##$##
 
 swap :: (a,b) -> (b,a)
-swap (x,y) = (y,x) 
+swap (x,y) = (y,x)
+
+mfst :: (a -> c) -> (a, b) -> (c, b)
+mfst f (x,y) = (f x, y)
+
+msnd :: (b -> c) -> (a, b) -> (a, c)
+msnd f (x,y) = (x, f y)
