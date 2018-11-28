@@ -119,8 +119,8 @@ anything = \s -> [splitAt i s | i <- [0 .. length s]]
 
 -- Matches any character.
 anyChar :: Parser Char
-anyChar [   ] = []
 anyChar (c:s) = [(c,s)]
+anyChar _     = []
 
 -- Matches one of the given characters.
 oneOf :: [Char] -> Parser Char
