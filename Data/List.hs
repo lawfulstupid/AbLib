@@ -1,5 +1,11 @@
 module AbLib.Data.List where
 
+import Data.Maybe (isJust)
+import Data.Array.IO (IOArray)
+import Data.Array.MArray (readArray, writeArray, newListArray)
+import System.Random (random, randomRIO)
+import Control.Monad (forM)
+
 -- | Safe element extraction
 (!?) :: [a] -> Int -> Maybe a
 xs !? n = let
@@ -7,6 +13,10 @@ xs !? n = let
    in if 0 <= n && n < up        -- check valid n
       then Just (xs !! n)
       else Nothing
+
+-- Put an item at the end of a list
+append :: [a] -> a -> [a]
+append xs x = xs ++ [x]
 
 -- | Delete element at index
 del :: Int -> [a] -> [a]
@@ -70,11 +80,11 @@ shuffle xs = sample (length xs) xs
 
 -- Uses binary search to determine if a list contains a given item.
 binSearch :: Ord a => a -> [a] -> Bool
-binSearch = isJust . binSearchStrong
+binSearch t xs = isJust $ binSearchStrong t xs
 
 -- Uses exponential search to determine if a list contains a given item.
 expSearch :: Ord a => a -> [a] -> Bool
-expSearch = isJust . expSearchStrong
+expSearch t xs = isJust $ expSearchStrong t xs
 
 -- Uses binary search to find largest index i such that (xs !! i <= t).
 binSearchWeak :: (Ord a) => a -> [a] -> Maybe Int
