@@ -65,7 +65,7 @@ splitBy _ [] = ([], [])
 splitBy f (x:xs) = if f x
    then (x:ys, ns)
    else (ys, x:ns)
-   where (ys, ns) = splitby f xs
+   where (ys, ns) = splitBy f xs
 
 -- Picks a number of random items from a list, without repetition.
 sample :: Int -> [a] -> IO [a]
