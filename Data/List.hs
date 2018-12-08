@@ -59,6 +59,14 @@ freq (x:xs) = (x, 1 + count (== x) xs) : freq (filter (/= x) xs)
 count :: (a -> Bool) -> [a] -> Int
 count f l = length $ filter f l
 
+-- Computes the complement of a filter at the same time.
+splitBy :: (a -> Bool) -> [a] -> ([a], [a])
+splitBy _ [] = ([], [])
+splitBy f (x:xs) = if f x
+   then (x:ys, ns)
+   else (ys, x:ns)
+   where (ys, ns) = splitby f xs
+
 -- Picks a number of random items from a list, without repetition.
 sample :: Int -> [a] -> IO [a]
 sample k xs = do
