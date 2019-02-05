@@ -34,6 +34,10 @@ setAll :: [Int] -> [a] -> a -> [a]
 setAll [    ] xs _ = xs
 setAll (i:is) xs x = setAll is (set i xs x) x
 
+-- returns list of valid indices for a given list
+indices :: [a] -> [Int]
+indices xs = [0 .. length xs - 1]
+
 -- delimit a list
 delim :: Eq a => [a] -> [a] -> [[a]]
 delim _ [] = [[]]
