@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 -- {-# LANGUAGE UndecidableInstances #-}
 -- {-# LANGUAGE FlexibleInstances #-}
 
