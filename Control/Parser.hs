@@ -2,10 +2,16 @@
 -- {-# LANGUAGE UndecidableInstances #-}
 -- {-# LANGUAGE FlexibleInstances #-}
 
-module AbLib.Control.Parser where
+module AbLib.Control.Parser (
+   Parser, apply,
+   MonadPlus(..), Alternative(..), mfilter,
+   match, matchAs, matchShow, matchOne, matchIf,
+   reader, anything, onFail, parseList,
+   whitespace
+) where
 
 import Control.Applicative (Alternative(..))
-import Control.Monad (MonadPlus(..))
+import Control.Monad (MonadPlus(..), mfilter)
 
 import Data.List (stripPrefix, nub)
 import Data.Maybe (maybeToList)
@@ -46,7 +52,8 @@ instance Monad Parser where
    fail _ = empty
    p >>= f = Parser $ \ s -> do { (x,r) <- apply p s; apply (f x) r }
 
-instance MonadPlus Parser        -- for posterity
+instance MonadPlus Parser
+   -- grants access to mfilter et al.
 
 instance Semigroup (Parser a) where
    (<>) = (<|>)
@@ -77,7 +84,9 @@ matchOne = mconcat . map match
 -- Parses `Char`s that pass a test.
 -- Useful in combination with `Data.Char` functions like isSpace.
 matchIf :: (Char -> Bool) -> Parser Char
-matchIf f = Parser $ \ (c:s) -> [ (c,s) | f c ]
+matchIf f = Parser $ \case
+   []    -> []
+   (c:s) -> [ (c,s) | f c ]
 
 -- Use a `Read` definition to parse.
 reader :: Read a => Parser a
