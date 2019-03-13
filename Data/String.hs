@@ -1,18 +1,16 @@
--- {-# LANGUAGE TypeSynonymInstances #-}
--- {-# LANGUAGE FlexibleInstances #-}
--- {-# LANGUAGE UndecidableInstances #-}
--- {-# LANGUAGE IncoherentInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module AbLib.Data.String where
 
--- For types that exhibit behaviour similar to String
-class StringLike s where
-   toString :: s -> String
-   
--- this actually works really nicely
-instance StringLike s => StringLike [s] where
-   toString = foldr (++) "" . map toString
-   
-instance StringLike Char where
-   toString = return
+class ToString a where
+   toString :: a -> String
 
+instance {-# OVERLAPPING #-} ToString Char where
+   toString = (:[])
+   
+instance {-# OVERLAPPING #-} ToString String where
+   toString = id
+
+instance Show a => ToString a where
+   toString = show

@@ -3,22 +3,22 @@
 -- {-# LANGUAGE UndecidableInstances #-}
 -- {-# LANGUAGE FlexibleInstances #-}
 
-module AbLib.Control.Parser (
-   Parser, apply,
-   MonadPlus(..), Alternative(..), mfilter,
-   match, matchAs, matchShow, matchOne, matchIf,
-   reader, anything, onFail, parseList,
-   whitespace
+module AbLib.Control.Parser
+   ( Parser, apply
+   , MonadPlus(..), Alternative(..), mfilter, liftA2, liftA3
+   , match, matchAs, matchOne, matchIf
+   , reader, anything, onFail, parseList
+   , whitespace
 ) where
 
-import Control.Applicative (Alternative(..))
+import Control.Applicative (Alternative(..), liftA2, liftA3)
 import Control.Monad (MonadPlus(..), mfilter)
 
 import Data.List (stripPrefix, nub)
 import Data.Maybe (maybeToList)
 import Data.Char (isSpace)
 
-import AbLib.Data.String (StringLike(..))
+import AbLib.Data.String (ToString(..))
 
 --------------------------------------------------------------------------------
 
@@ -61,28 +61,26 @@ instance Semigroup (Parser a) where
    
 instance Monoid (Parser a) where
    mempty = empty
+   
+--------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 
--- Matches a given `String` exactly.
-match :: StringLike s => s -> Parser String
+-- Matches a value exactly using its String representation
+match :: ToString a => a -> Parser a
 match t = let
    t' = toString t
-   in Parser $ \s -> map (t' ,) . maybeToList $ stripPrefix t' s
+   in Parser $ \s -> map (t ,) . maybeToList $ stripPrefix t' s
 
 -- Match a given `String` and interpret it as another value.
-matchAs :: String -> a -> Parser a
+matchAs :: ToString k => k -> a -> Parser a
 matchAs t x = fmap (const x) $ match t
 
--- Match a value by its `String` form.
-matchShow :: Show a => a -> Parser a
-matchShow t = matchAs (show t) t
-
--- Match one of the given `StringLike`s.
-matchOne :: StringLike s => [s] -> Parser String
+-- Match one of the given values
+matchOne :: ToString a => [a] -> Parser a
 matchOne = mconcat . map match
 
--- Parses `Char`s that pass a test.
+-- Parses values pass a test.
 -- Useful in combination with `Data.Char` functions like isSpace.
 matchIf :: (Char -> Bool) -> Parser Char
 matchIf f = Parser $ \case
@@ -104,7 +102,7 @@ onFail p q = Parser $ \s -> case apply p s of
    xs -> xs
 
 -- Parse a list of parseable items using given delimitor.
-parseList :: StringLike s => (s, s, s) -> Parser a -> Parser [a]
+parseList :: ToString s => (s, s, s) -> Parser a -> Parser [a]
 parseList (left, delim, right) item = do
    match left                             -- left bracket required
    x <- return [] <|> do                  -- following is optional
