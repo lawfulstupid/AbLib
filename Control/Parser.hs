@@ -4,11 +4,8 @@
 -- {-# LANGUAGE FlexibleInstances #-}
 
 module AbLib.Control.Parser
-   ( Parser, apply
+   ( module AbLib.Control.Parser
    , MonadPlus(..), Alternative(..), mfilter, liftA2, liftA3
-   , match, matchAs, matchOne, matchIf
-   , reader, anything, onFail, parseList
-   , whitespace
 ) where
 
 import Control.Applicative (Alternative(..), liftA2, liftA3)
@@ -16,7 +13,6 @@ import Control.Monad (MonadPlus(..), mfilter)
 
 import Data.List (stripPrefix, nub)
 import Data.Maybe (maybeToList)
-import Data.Char (isSpace)
 
 import AbLib.Data.String (ToString(..))
 
@@ -27,6 +23,18 @@ newtype Parser a = Parser (ReadS a)
 -- Unpacks a `Parser`.
 apply :: Parser a -> ReadS a
 apply (Parser p) = p
+
+class Parse a where
+   parser :: Parser a
+   parser = Parser parse
+   
+   parse  :: ReadS a
+   parse  = apply parser
+   
+   {-# MINIMAL parser | parse #-}
+   
+instance Parse Int where
+   parse = read
 
 --------------------------------------------------------------------------------
 
@@ -44,7 +52,7 @@ instance Alternative Parser where
    p <|> q = Parser $ \ s -> apply p s ++ apply q s
    -- Default definitions for `many` and `some` didn't halt for Parser:
    many p = pure [] <|> some p   -- empty list OR at least one
-   some p = do
+   some p = do                   -- one or more
       h <- p                     -- list head
       t <- many p                -- zero or more tail elements
       return (h:t)               -- stick the list together
@@ -113,20 +121,3 @@ parseList (left, delim, right) item = do
    return x
 
 --------------------------------------------------------------------------------
-
--- Matches a region of contiguous whitespace
-whitespace :: Parser String
-whitespace = many $ matchIf isSpace
-
-
-
-
-
-
-
-
-
-
-
-
-
