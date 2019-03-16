@@ -1,7 +1,4 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE LambdaCase #-}
--- {-# LANGUAGE UndecidableInstances #-}
--- {-# LANGUAGE FlexibleInstances #-}
 
 module AbLib.Control.Parser
    ( module AbLib.Control.Parser
