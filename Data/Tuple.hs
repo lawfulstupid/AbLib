@@ -32,3 +32,6 @@ mfst f (x,y) = (f x, y)
 
 msnd :: (b -> c) -> (a, b) -> (a, c)
 msnd f (x,y) = (x, f y)
+
+two :: a -> (a,a)
+two x = (x,x)
