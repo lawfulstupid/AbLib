@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TupleSections #-}
 
 module AbLib.Control.Parser
    ( module AbLib.Control.Parser
@@ -30,8 +31,8 @@ class Parse a where
    
    {-# MINIMAL parser | parse #-}
    
-instance Parse Int where
-   parse = read
+-- instance Read a => Parse a where
+   -- parser = reader
 
 --------------------------------------------------------------------------------
 
