@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module AbLib.Control.Parser
    ( module AbLib.Control.Parser
@@ -22,6 +24,11 @@ newtype Parser a = Parser (ReadS a)
 apply :: Parser a -> ReadS a
 apply (Parser p) = p
 
+maybeParse :: Parser a -> String -> Maybe a
+maybeParse f s = case apply f s of
+   [(x,r)] -> Just x
+   _       -> Nothing
+
 class Parse a where
    parser :: Parser a
    parser = Parser parse
@@ -31,8 +38,8 @@ class Parse a where
    
    {-# MINIMAL parser | parse #-}
    
--- instance Read a => Parse a where
-   -- parser = reader
+instance Read a => Parse a where
+   parser = reader
 
 --------------------------------------------------------------------------------
 
@@ -67,6 +74,9 @@ instance Semigroup (Parser a) where
    
 instance Monoid (Parser a) where
    mempty = empty
+   
+optional :: Parser a -> Parser (Maybe a)
+optional f = matchAs "" Nothing <|> fmap Just f
    
 --------------------------------------------------------------------------------
 
