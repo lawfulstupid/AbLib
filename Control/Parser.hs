@@ -26,8 +26,8 @@ apply (Parser p) = p
 
 maybeParse :: Parser a -> String -> Maybe a
 maybeParse f s = case apply f s of
-   [(x,r)] -> Just x
-   _       -> Nothing
+   [(x,"")] -> Just x
+   _        -> Nothing
 
 class Parse a where
    parser :: Parser a
