@@ -1,8 +1,8 @@
 -- Provides basic parsers and combinators to build complex parsers.
 
-module AbLib.Data.Parser where
+module AbLib.Data.Parser {-# DEPRECATED "Use AbLib.Control.Parser instead" #-} where
 
-import AbLib.Util.Safe
+import AbLib.Control.Safe
 import Data.List (nub, sort, isPrefixOf)
 
 type Parser a = String -> [(a, String)]
@@ -16,14 +16,14 @@ parse p s = case nub . filter (null . snd) $ p s of
 -- Make simple substitutions to a string before parsing.
 substitute :: [(String, String)] -> String -> String
 substitute _ [] = []
-substitute mp s = case (options mp <> chars 1) s of
+substitute mp s = case (options mp <||> chars 1) s of
    (t,r):_ -> t ++ substitute mp r
 
 -------- PARSER COMBINATORS --------
 
 -- Option between two Parsers.
-(<>) :: Parser a -> Parser a -> Parser a
-f <> g = \s -> f s ++ g s
+(<||>) :: Parser a -> Parser a -> Parser a
+f <||> g = \s -> f s ++ g s
 
 -- Sequence Parsers, keep second result.
 (&>) :: Parser a -> Parser b -> Parser b
@@ -51,7 +51,7 @@ t <~ f = \s -> [ (t x, r) | (x, r) <- f s ]
 
 -- Repeat a Parser at least once.
 many :: Parser a -> Parser a
-many f = f <> (f & many f)
+many f = f <||> (f & many f)
 
 -- Repeat a parser any number of times.
 some :: Parser a -> Parser a
@@ -60,11 +60,11 @@ some = optional . many
 -- Repeat a parser at most once.
 -- Only use in a sequence where this result is to be discarded.
 optional ::  Parser a -> Parser a
-optional f = accept undefined <> f
+optional f = accept undefined <||> f
 
 -- Combines a collection of parsers disjunctively.
 parallel :: Foldable t => t (Parser a) -> Parser a
-parallel = foldr (<>) reject
+parallel = foldr (<||>) reject
 
 -- Accepts the first successful parser from a list.
 firstRule :: [Parser a] -> Parser a
@@ -101,15 +101,15 @@ match t = \ s -> let
 
 -- Uses a lookup list as a Parser.
 options :: [(String, a)] -> Parser a
-options = foldr1 (<>) . map (\ (s,x) -> match s ~> const x)
+options = foldr1 (<||>) . map (\ (s,x) -> match s ~> const x)
 
 -- Parse a list of items. Args: Parser for items; Delimiter string.
 list :: Parser a -> String -> Parser [a]
 list item delim = let
    emptyLst = accept []
    lstHead = item
-   lstTail = emptyLst <> (match delim & list item delim)
-   in emptyLst <> ((lstHead <&> lstTail) ~> uncurry (:))
+   lstTail = emptyLst <||> (match delim & list item delim)
+   in emptyLst <||> ((lstHead <&> lstTail) ~> uncurry (:))
 
 -------- OFTEN-USED PARSERS --------
 
