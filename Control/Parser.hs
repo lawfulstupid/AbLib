@@ -88,6 +88,10 @@ optional f = matchAs "" Nothing <|> fmap Just f
 lookAhead :: Parser a -> Parser a
 lookAhead f = Parser $ \s -> [ (x,s) | (x,_) <- apply f s ]
    
+{- Applies a function to the input string -}
+inputMap :: (String -> String) -> Parser ()
+inputMap f = Parser $ \s -> [ ((), f s) ]
+
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
