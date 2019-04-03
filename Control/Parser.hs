@@ -29,6 +29,9 @@ maybeParse f s = case apply f s of
    [(x,"")] -> Just x
    _        -> Nothing
 
+fullParse :: Parser a -> String -> a
+fullParse f = maybe (error "no parse") id . maybeParse f
+
 class Parse a where
    parser :: Parser a
    parser = Parser parse
