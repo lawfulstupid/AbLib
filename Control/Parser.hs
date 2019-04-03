@@ -80,8 +80,13 @@ instance Semigroup (Parser a) where
 instance Monoid (Parser a) where
    mempty = empty
    
+{- Makes a Parser optional, realised through Maybe -}
 optional :: Parser a -> Parser (Maybe a)
 optional f = matchAs "" Nothing <|> fmap Just f
+
+{- Parses without consuming characters -}
+lookAhead :: Parser a -> Parser a
+lookAhead f = Parser $ \s -> [ (x,s) | (x,_) <- apply f s ]
    
 --------------------------------------------------------------------------------
 
@@ -91,7 +96,7 @@ optional f = matchAs "" Nothing <|> fmap Just f
 match :: ToString a => a -> Parser a
 match t = let
    t' = toString t
-   in Parser $ \s -> map (t ,) . maybeToList $ stripPrefix t' s
+   in Parser $ \s -> map (t,) . maybeToList $ stripPrefix t' s
 
 -- Match a given `String` and interpret it as another value.
 matchAs :: ToString k => k -> a -> Parser a
