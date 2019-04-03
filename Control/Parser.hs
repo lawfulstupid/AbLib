@@ -6,6 +6,7 @@
 module AbLib.Control.Parser
    ( module AbLib.Control.Parser
    , MonadPlus(..), Alternative(..), mfilter, liftA2, liftA3
+   , (<<)
 ) where
 
 import Control.Applicative (Alternative(..), liftA2, liftA3)
@@ -15,6 +16,7 @@ import Data.List (stripPrefix, nub)
 import Data.Maybe (maybeToList)
 
 import AbLib.Data.String (ToString(..))
+import AbLib.Control.Alias ((<<))
 
 --------------------------------------------------------------------------------
 
