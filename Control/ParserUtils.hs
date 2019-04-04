@@ -1,13 +1,22 @@
 
--- Intended for qualified import
+{-
+   Contains some common basic parsers
+   Intended for qualified import
+-}
 module AbLib.Control.ParserUtils where
 
 import AbLib.Control.Parser
 import Data.Char (isSpace)
 
--- Matches a region of contiguous whitespace
+{- Matches a nonempty region of contiguous whitespace -}
+{- Includes newlines -}
 whitespace :: Parser String
-whitespace = many $ matchIf isSpace
+whitespace = some $ matchIf isSpace
+
+{- Matches a nonempty region of contiguous inline whitespace -}
+{- Does not include newlines -}
+ws :: Parser String
+ws = some $ matchOne " \t"
 
 -- Matches a letter
 letter :: Parser Char

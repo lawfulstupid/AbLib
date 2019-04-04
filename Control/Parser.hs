@@ -67,6 +67,10 @@ instance Alternative Parser where
       t <- many p                -- zero or more tail elements
       return (h:t)               -- stick the list together
 
+{- Repeat a parsers exactly n times -}
+exactly :: Int -> Parser a -> Parser [a]
+exactly n f = sequence $ replicate n f
+
 instance Monad Parser where
    fail _ = empty
    p >>= f = Parser $ \ s -> do { (x,r) <- apply p s; apply (f x) r }
@@ -85,8 +89,8 @@ optional :: Parser a -> Parser (Maybe a)
 optional f = matchAs "" Nothing <|> fmap Just f
 
 {- Parses without consuming characters -}
-lookAhead :: Parser a -> Parser a
-lookAhead f = Parser $ \s -> [ (x,s) | (x,_) <- apply f s ]
+peek :: Parser a -> Parser a
+peek f = Parser $ \s -> [ (x,s) | (x,_) <- apply f s ]
    
 {- Applies a function to the input string -}
 inputMap :: (String -> String) -> Parser ()
