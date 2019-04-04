@@ -4,6 +4,7 @@ module AbLib.Data.Parser {-# DEPRECATED "Use AbLib.Control.Parser instead" #-} w
 
 import AbLib.Control.Safe
 import Data.List (nub, sort, isPrefixOf)
+import Data.Text
 
 type Parser a = String -> [(a, String)]
 
@@ -24,47 +25,58 @@ substitute mp s = case (options mp <||> chars 1) s of
 -- Option between two Parsers.
 (<||>) :: Parser a -> Parser a -> Parser a
 f <||> g = \s -> f s ++ g s
+-- USE: (<>), (<|>)
 
 -- Sequence Parsers, keep second result.
 (&>) :: Parser a -> Parser b -> Parser b
 f &> g = \s -> [ (x,q) | (_,r) <- f s, (x,q) <- g r ]
+-- USE: (>>)
 
 -- Convenient synonym.
 (&) :: Parser a -> Parser b -> Parser b
 (&) = (&>)
+-- USE: (>>)
 
 -- Sequence Parsers, keep first result.
 (<&) :: Parser a -> Parser b -> Parser a
 f <& g = \s -> [ (x,q) | (x,r) <- f s, (_,q) <- g r ]
+-- USE: (<<)
 
 -- Sequence Parsers, combine results
 (<&>) :: Parser a -> Parser b -> Parser (a,b)
 f <&> g = \s -> [ ((x,y),q) | (x,r) <- f s, (y,q) <- g r ]
+-- USE: >>= \x -> fmap (x,)
 
 -- Transform results of parsing.
 (~>) :: Parser a -> (a -> b) -> Parser b
 f ~> t = \s -> [ (t x, r) | (x, r) <- f s ]
+-- USE: `flip fmap`
 
 -- Transform results of parsing (in reverse).
 (<~) :: (a -> b) -> Parser a -> Parser b
 t <~ f = \s -> [ (t x, r) | (x, r) <- f s ]
+-- USE: `fmap`
 
 -- Repeat a Parser at least once.
 many :: Parser a -> Parser a
 many f = f <||> (f & many f)
+-- USE: some
 
 -- Repeat a parser any number of times.
 some :: Parser a -> Parser a
 some = optional . many
+-- USE: many
 
 -- Repeat a parser at most once.
 -- Only use in a sequence where this result is to be discarded.
 optional ::  Parser a -> Parser a
 optional f = accept undefined <||> f
+-- USE: a better method
 
 -- Combines a collection of parsers disjunctively.
 parallel :: Foldable t => t (Parser a) -> Parser a
 parallel = foldr (<||>) reject
+-- USE: mconcat
 
 -- Accepts the first successful parser from a list.
 firstRule :: [Parser a] -> Parser a
@@ -72,10 +84,11 @@ firstRule []     _ = []
 firstRule (p:ps) s = case p s of
    [] -> firstRule ps s
    xs -> xs
+-- USE: mconcat
 
 -- Use a Parser without consuming input.
 lookAhead :: Parser a -> Parser a
-lookAhead f = \s -> [ (x,s) | (x,r) <- f s ]
+lookAhead f = \s -> [ (x,s) | (x,r) <- f ]
 
 -------- BASIC PARSERS --------
 
