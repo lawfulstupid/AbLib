@@ -1,6 +1,7 @@
 module AbLib.Control.Alias where
 
 -- "then" operator. Composes functions left-to-right
+($>) :: a -> (a -> b) -> b
 ($>) = flip ($)
 infixl 0 $>
 
