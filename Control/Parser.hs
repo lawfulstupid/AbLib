@@ -5,12 +5,12 @@
 
 module AbLib.Control.Parser
    ( module AbLib.Control.Parser
-   , MonadPlus(..), Alternative(..), mfilter, liftA2, liftA3
+   , MonadPlus(..), Alternative(..), mfilter, liftA2, liftA3, guard
    , (<<)
 ) where
 
 import Control.Applicative (Alternative(..), liftA2, liftA3)
-import Control.Monad (MonadPlus(..), mfilter)
+import Control.Monad (MonadPlus(..), mfilter, guard)
 
 import Data.List (stripPrefix, nub)
 import Data.Maybe (maybeToList)
@@ -100,7 +100,13 @@ inputMap f = Parser $ \s -> [ ((), f s) ]
 
 --------------------------------------------------------------------------------
 
--- Matches a value exactly using its String representation
+-- Returns the next character from input.
+next :: Parser Char
+next = Parser $ \case
+   []    -> []
+   (c:s) -> [(c,s)]
+
+-- Matches a value exactly using its String representation.
 match :: ToString a => a -> Parser a
 match t = let
    t' = toString t
@@ -117,9 +123,10 @@ matchOne = mconcat . map match
 -- Parses values pass a test.
 -- Useful in combination with `Data.Char` functions like isSpace.
 matchIf :: (Char -> Bool) -> Parser Char
-matchIf f = Parser $ \case
-   []    -> []
-   (c:s) -> [ (c,s) | f c ]
+matchIf f = do
+   c <- next
+   guard (f c)
+   return c
 
 -- Use a `Read` definition to parse.
 reader :: Read a => Parser a
