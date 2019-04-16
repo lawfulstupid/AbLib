@@ -20,19 +20,22 @@ import AbLib.Control.Alias ((<<))
 
 --------------------------------------------------------------------------------
 
-newtype Parser a = Parser (ReadS a)
+newtype Parser a = Parser (String -> [(a, String)])
 
--- Unpacks a `Parser`.
+{- Unpacks a Parser. -}
 apply :: Parser a -> ReadS a
 apply (Parser p) = p
 
+{- Runs a Parser, return the parsed value. -}
+fullParse :: Parser a -> String -> a
+fullParse f = maybe parseErr id . maybeParse f
+   where parseErr = errorWithoutStackTrace "AbLib.Control.Parser.fullParse: no parse"
+
+{- Full Parsing in a safe way. -}
 maybeParse :: Parser a -> String -> Maybe a
 maybeParse f s = case apply f s of
    [(x,"")] -> Just x
    _        -> Nothing
-
-fullParse :: Parser a -> String -> a
-fullParse f = maybe (error "no parse") id . maybeParse f
 
 class Parse a where
    parser :: Parser a
@@ -42,9 +45,10 @@ class Parse a where
    parse  = apply parser
    
    {-# MINIMAL parser | parse #-}
-   
+
+{- Allows parsing any Readable -}
 instance Read a => Parse a where
-   parser = reader
+   parser = Parser $ readsPrec 0
 
 --------------------------------------------------------------------------------
 
@@ -60,7 +64,7 @@ instance Applicative Parser where
 instance Alternative Parser where
    empty = Parser $ const []
    p <|> q = Parser $ \ s -> apply p s ++ apply q s
-   -- Default definitions for `many` and `some` didn't halt for Parser:
+   {- Default definitions for `many` and `some` didn't halt. -}
    many p = pure [] <|> some p   -- empty list OR at least one
    some p = do                   -- one or more
       h <- p                     -- list head
@@ -76,7 +80,7 @@ instance Monad Parser where
    p >>= f = Parser $ \ s -> do { (x,r) <- apply p s; apply (f x) r }
 
 instance MonadPlus Parser
-   -- grants access to mfilter et al.
+   {- grants access to mfilter et al. -}
 
 instance Semigroup (Parser a) where
    (<>) = (<|>)
@@ -100,49 +104,51 @@ inputMap f = Parser $ \s -> [ ((), f s) ]
 
 --------------------------------------------------------------------------------
 
--- Returns the next character from input.
+{- Returns the next character from input. -}
 next :: Parser Char
 next = Parser $ \case
    []    -> []
    (c:s) -> [(c,s)]
 
--- Matches a value exactly using its String representation.
+{- Matches a value exactly using its String representation. -}
 match :: ToString a => a -> Parser a
 match t = let
    t' = toString t
    in Parser $ \s -> map (t,) . maybeToList $ stripPrefix t' s
 
--- Match a given `String` and interpret it as another value.
+{- Match a given `String` and interpret it as another value. -}
 matchAs :: ToString k => k -> a -> Parser a
 matchAs t x = fmap (const x) $ match t
 
--- Match one of the given values
+{- Match one of the given values -}
 matchOne :: ToString a => [a] -> Parser a
 matchOne = mconcat . map match
 
--- Parses values pass a test.
--- Useful in combination with `Data.Char` functions like isSpace.
+{- Parses values pass a test. -}
+{- Useful in combination with `Data.Char` functions like isSpace. -}
 matchIf :: (Char -> Bool) -> Parser Char
 matchIf f = do
    c <- next
    guard (f c)
    return c
 
--- Use a `Read` definition to parse.
+{- Use a `Read` definition to parse. -}
+{- Largely redundant since instance Read a => Parse a was introduced. -}
+{- Felt cute, might deprecate later idk -}
 reader :: Read a => Parser a
-reader = Parser $ readsPrec 0
+reader = parser
 
--- Match any `String`.
+{- Match any String. -}
 anything :: Parser String
 anything = Parser $ \s -> map (`splitAt` s) [0 .. length s]
 
--- Attempts to use a `Parser`, and switches to the second only if the first fails.
+{- Attempts to use a `Parser`, and switches to the second only if the first fails. -}
 onFail :: Parser a -> Parser a -> Parser a
 onFail p q = Parser $ \s -> case apply p s of
    [] -> apply q s
    xs -> xs
 
--- Parse a list of parseable items using given delimitor.
+{- Parse a list of parseable items using given delimitor. -}
 parseList :: ToString s => (s, s, s) -> Parser a -> Parser [a]
 parseList (left, delim, right) item = do
    match left                             -- left bracket required
