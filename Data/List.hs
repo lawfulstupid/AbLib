@@ -1,12 +1,17 @@
 module AbLib.Data.List where
 
+import AbLib.Data.Tuple
 import Data.Maybe (isJust)
 import Data.Array.IO (IOArray)
 import Data.Array.MArray (readArray, writeArray, newListArray)
 import System.Random (random, randomRIO)
 import Control.Monad (forM)
 
--- | Safe element extraction
+{- List of all possible splitAts -}
+splits :: [a] -> [([a],[a])]
+splits xs = [ splitAt n xs | n <- [0 .. length xs] ]
+
+{- Safe element extraction -}
 (!?) :: [a] -> Int -> Maybe a
 xs !? n = let
    up = length $ take (n+1) xs   -- allows xs to be infinite
