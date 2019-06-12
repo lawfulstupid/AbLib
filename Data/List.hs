@@ -52,6 +52,15 @@ delim d (x:xs) = let
       then [] : (h : t)
       else (x : h) : t
 
+{- Right-pad a list with given item. -}
+rpad :: Int -> a -> [a] -> [a]
+rpad n x xs = take n $ xs ++ repeat x
+
+{- Left-pad a list with given item. -}
+lpad :: Int -> a -> [a] -> [a]
+lpad n x xs = replicate (n - length ys) x ++ ys
+   where ys = take n xs
+
 -- Zips up to length of longest list, using defaults to finish the shorter list.
 zipDef :: (a -> b -> c) -> (a,b) -> [a] -> [b] -> [c]
 zipDef _ (_,_) []     []     = []
