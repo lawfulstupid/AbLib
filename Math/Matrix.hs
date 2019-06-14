@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-missing-methods #-}
+
 module AbLib.Math.Matrix (
    Matrix, printMatrix, fromList, fromList', toList,
    rc, rows, cols, zeroSize, det,
@@ -49,9 +51,9 @@ instance Functor Matrix where
    fmap f (Matrix m) = Matrix $ map (map f) m
    
 instance Num a => Num (Matrix a) where
-   Matrix a + Matrix b = if rc (Matrix a) /= rc (Matrix b)
+   a + b = if rc a /= rc b
       then error "mismatching dimensions!"
-      else Matrix $ zipWith (zipWith (+)) a b
+      else Matrix $ zipWith (zipWith (+)) (toList a) (toList b)
    
    -- Dot product of matrices
    a * b = let
@@ -61,6 +63,9 @@ instance Num a => Num (Matrix a) where
       in if ca /= rb
          then error "mismatching dimensions!"
          else Matrix [[f i j | j <- [0..cb-1]] | i <- [0..ra-1]]
+   
+   negate      = fmap negate
+   fromInteger = fromList' 1 . return . fromInteger
 
 rc :: Matrix a -> (Int, Int)
 rc m = (rows m, cols m)
@@ -171,9 +176,7 @@ zero (r,c) = Matrix $ replicate r $ replicate c 0
 
 -- Identity matrix: 1s along the main diagonal and 0 elsewhere
 ident :: Num a => Int -> Matrix a
-ident n = let
-   row i = replicate i 0 ++ [1] ++ replicate (n-1-i) 0
-   in Matrix $ map row [0..n-1]
+ident n = Matrix [[if x==y then 1 else 0 | x <- [1..n]] | y <- [1..n]]
 
 -- Not sure if this has a name; it's a flipped identity matrix
 coIdent :: Num a => Int -> Matrix a
