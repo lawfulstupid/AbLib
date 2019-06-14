@@ -1,17 +1,21 @@
-module Math.Matrix (
-   Matrix, fromList, toList,
+module AbLib.Math.Matrix (
+   Matrix, printMatrix, fromList, fromList', toList,
    rc, rows, cols, zeroSize, det,
-   (!), getRow, getCol, setRow, setCol, minor,
-   echelon, rowSwap, rowScale, rowAddBy, rowAdd, rowSub,
-   dot,
+   (!), getRow, getCol, setRow, setCol,
+   rowSwap, rowScale, rowAddBy, rowAdd, rowSub,
+   minor, pivot, echelon,
    zero, ident, coIdent
 ) where
 
+import AbLib.Data.List ((!?), del, set, lpad)
 import Data.List (nub)
-import Util.List ((!?), del, set)
 import Data.Maybe (fromJust)
 
-data Matrix a = Matrix { toList :: [[a]] } deriving (Eq)
+data Matrix a = Matrix [[a]]
+   deriving (Eq)
+
+toList :: Matrix a -> [[a]]
+toList (Matrix m) = m
 
 fromList :: [[a]] -> Matrix a
 fromList m = case nub $ map length m of
@@ -20,11 +24,43 @@ fromList m = case nub $ map length m of
    [_] -> Matrix m                        -- unique nonzero row length
    ___ -> error "unequal row lengths!"    -- multiple row lengths
 
+{- Create given width and value list in right-to-left top-to-bottom order. -}
+fromList' :: Int -> [a] -> Matrix a
+fromList' n xs = fromList $ aux xs
+   where
+   aux :: [a] -> [[a]]
+   aux [] = []
+   aux xs = a : aux b where (a,b) = splitAt n xs
+
 instance Show a => Show (Matrix a) where
    show = show . toList
+   
+printMatrix :: Show a => Matrix a -> IO ()
+printMatrix (Matrix m) = do
+   let itemLen = maximum $ map (length . show) $ concat m
+   let pad = lpad itemLen ' '
+   flip mapM_ m $ \ r -> do 
+      flip mapM_ r $ \ x -> do
+         putStr $ pad $ show x
+         putStr " "
+      putStr "\n"
 
 instance Functor Matrix where
    fmap f (Matrix m) = Matrix $ map (map f) m
+   
+instance Num a => Num (Matrix a) where
+   Matrix a + Matrix b = if rc (Matrix a) /= rc (Matrix b)
+      then error "mismatching dimensions!"
+      else Matrix $ zipWith (zipWith (+)) a b
+   
+   -- Dot product of matrices
+   a * b = let
+      (ra,ca) = rc a
+      (rb,cb) = rc b
+      f i j = sum [(a ! (i,k)) * (b ! (k,j)) | k <- [0..ca-1]]
+      in if ca /= rb
+         then error "mismatching dimensions!"
+         else Matrix [[f i j | j <- [0..cb-1]] | i <- [0..ra-1]]
 
 rc :: Matrix a -> (Int, Int)
 rc m = (rows m, cols m)
@@ -46,8 +82,8 @@ getRow i (Matrix m) = case m !? i of
    Nothing -> []
    Just rw -> rw
 
-setRow :: Int -> Matrix a -> [a] -> Matrix a
-setRow i (Matrix m) row = if length row == cols (Matrix m)
+setRow :: Int -> [a] -> Matrix a -> Matrix a
+setRow i row (Matrix m) = if length row == cols (Matrix m)
    then Matrix $ set i m row
    else error "mismatching row length!"
 
@@ -56,8 +92,8 @@ getCol i (Matrix m) = case map (!? i) m of
    Nothing : _ -> []
    justColumn  -> map fromJust justColumn
 
-setCol :: Int -> Matrix a -> [a] -> Matrix a
-setCol i (Matrix m) col = if length col == rows (Matrix m)
+setCol :: Int -> [a] -> Matrix a -> Matrix a
+setCol i col (Matrix m) = if length col == rows (Matrix m)
    then Matrix $ zipWith (set i) m col
    else error "mismatching column length!"
 
@@ -70,37 +106,36 @@ det m = let
    term i = parity i * m ! (0,i) * det (minor m (0,i))
    in sum $ map term [0 .. cols m - 1]
 
--- Dot product of matrices
-dot :: Num a => Matrix a -> Matrix a -> Matrix a
-dot a b = let
-   (ra,ca) = rc a
-   (rb,cb) = rc b
-   f i j = sum [(a ! (i,k)) * (b ! (k,j)) | k <- [0..ca-1]]
-   in if ca /= rb
-      then error "mismatching dimensions!"
-      else Matrix [[f i j | j <- [0..cb-1]] | i <- [0..ra-1]]
-
 rowScale :: (Num a) => Matrix a -> Int -> a -> Matrix a
-rowScale m i sf = setRow i m $ map (sf *) $ getRow i m
+rowScale m i sf = setRow i (map (sf *) $ getRow i m) m
 
 rowSwap :: Matrix a -> (Int, Int) -> Matrix a
 rowSwap m (i,j) = let
    row_i = getRow i m
    row_j = getRow j m
-   m' = setRow i m row_j
-   in setRow j m' row_i
+   m' = setRow i row_j m
+   in setRow j row_i m'
 
-rowAdd :: (Num a) => Matrix a -> Int -> Int -> Matrix a
+rowAdd :: (Num a) => Int -> Int -> Matrix a -> Matrix a
 rowAdd = rowAddBy 1
 
-rowSub :: (Num a) => Matrix a -> Int -> Int -> Matrix a
+rowSub :: (Num a) => Int -> Int -> Matrix a -> Matrix a
 rowSub = rowAddBy (-1)
 
-rowAddBy :: (Num a) => a -> Matrix a -> Int -> Int -> Matrix a
-rowAddBy sf m src tgt = let
+rowAddBy :: (Num a) => a -> Int -> Int -> Matrix a -> Matrix a
+rowAddBy sf src tgt m = let
    srcRow = getRow src m
    tgtRow = getRow tgt m
-   in setRow tgt m $ zipWith (\ x y -> sf * x + y) srcRow tgtRow
+   in setRow tgt (zipWith (\ x y -> sf * x + y) srcRow tgtRow) m
+
+{- Sets the index to 1 and all other values in the column to 0 using row operations. -}
+pivot :: Fractional a => (Int,Int) -> Matrix a -> Matrix a
+pivot (i,j) m = let
+   p  = m ! (i,j)
+   m' = rowScale m i $ recip p
+   domain = [0 .. i-1] ++ [i+1 .. rows m - 1]
+   subRow r = rowAddBy (negate $ m ! (r,j)) i r
+   in foldr subRow m' domain
 
 -- Extracts a minor or a matrix
 minor :: Matrix a -> (Int, Int) -> Matrix a
@@ -121,13 +156,13 @@ echelon m = let
    zeroLead 0 m = m
    zeroLead i m = let
       sf = m ! (i,0)             -- leading term of row i
-      m' = rowAddBy (-sf) m 0 i  -- row i reduced by row 0 to have leading 0
+      m' = rowAddBy (-sf) 0 i m  -- row i reduced by row 0 to have leading 0
       in zeroLead (i-1) m'       -- repeat on other rows
    zeroCoeffs :: Num a => Int -> Matrix a -> Matrix a
    zeroCoeffs 0 m = m
    zeroCoeffs i m = let
       sf = m ! (0,i)
-      m' = rowAddBy (-sf) m i 0
+      m' = rowAddBy (-sf) i 0 m
       in zeroCoeffs (i-1) m'
 
 -- Zero everywhere
