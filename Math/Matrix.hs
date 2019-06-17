@@ -10,7 +10,7 @@ module AbLib.Math.Matrix (
 ) where
 
 import AbLib.Data.List ((!?), del, set, lpad)
-import Data.List (nub)
+import qualified Data.List as List
 import Data.Maybe (fromJust)
 
 data Matrix a = Matrix [[a]]
@@ -20,7 +20,7 @@ toList :: Matrix a -> [[a]]
 toList (Matrix m) = m
 
 fromList :: [[a]] -> Matrix a
-fromList m = case nub $ map length m of
+fromList m = case List.nub $ map length m of
    [ ] -> error "empty matrix!"           -- no rows
    [0] -> error "empty matrix!"           -- rows are zero-length
    [_] -> Matrix m                        -- unique nonzero row length
@@ -183,3 +183,6 @@ coIdent :: Num a => Int -> Matrix a
 coIdent n = let
    row i = replicate (n-1-i) 0 ++ [1] ++ replicate i 0
    in Matrix $ map row [0..n-1]
+
+transpose :: Matrix a -> Matrix a
+transpose (Matrix m) = Matrix $ List.transpose m
