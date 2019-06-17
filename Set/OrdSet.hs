@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
 -- A set type for storing ranges of Ord values.
 -- I've realised some problems with it, and am
@@ -17,7 +18,7 @@ module Math.OrdSet (
 ) where
 
 import AbLib.Set.Set
-import AbLib.Data.Tuple (($$))
+import AbLib.Data.Tuple
 import Data.List (sortOn, sortBy)
 import GHC.Base (liftA2)
 
@@ -32,7 +33,7 @@ intervals (Union set) = set
 -- Creates a comparator by specifying which BoundType is "lesser"
 boundOrd :: Ord a => BoundType -> Bound a -> Bound a -> Ordering
 boundOrd t (x,tx) (y,ty) = case compare x y of
-   EQ -> case (t ==) $$ (tx, ty) of
+   EQ -> case (t ==) $# (tx, ty) of
       (True, False) -> LT
       (False, True) -> GT
       _             -> EQ
@@ -106,7 +107,6 @@ instance Set (OrdSet a) a where
       swap (x,Open) = (x,Closed)
       swap (x,Closed) = (x,Open)
    
-   sup (Union set) = case 
    infsup (Union set) = case map (both fst) set of
       [] -> Nothing
       xs -> Just $ foldr1 aux xs where                -- fold into min/max

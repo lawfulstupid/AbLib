@@ -7,7 +7,7 @@ module AbLib.Set.RealSet where
 
 import AbLib.Set.Set
 import AbLib.Data.Tuple
-import AbLib.Util.Safe
+import AbLib.Control.Safe
 import Data.List (sortOn, sortBy, nub)
 
 newtype RealSet a = Union [Interval a]

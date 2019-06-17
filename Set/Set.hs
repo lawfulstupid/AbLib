@@ -34,11 +34,16 @@ class Set s a | s -> a where
    intersect      :: Eq a => s -> s -> s
    -- Compute the difference between two sets.
    complement     :: Eq a => s -> s -> s
-
-   -- Computethe supremum of a set
+   
+   -- Compute the infimum and supermum of a set
+   infsup         :: Ord a => s -> Maybe (a,a)
+   
+   -- Compute the supremum of a set
    sup            :: Ord a => s -> Maybe a
+   sup = fmap snd . infsup
    -- Compute the infimum of a set
    inf            :: Ord a => s -> Maybe a
+   inf = fmap fst . infsup
 
    -- Lift set values to a higher type, such as AbLib.Data.Extended
    lift           :: (Applicative f, Set t (f a)) => s -> t
