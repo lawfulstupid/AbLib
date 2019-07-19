@@ -46,9 +46,9 @@ class Parse a where
    
    {-# MINIMAL parser | parse #-}
 
-{- Allows parsing any Readable -}
-instance Read a => Parse a where
-   parser = Parser $ readsPrec 0
+{- This makes it easier to define readsPrec -}
+instance Parse a => Read a where
+   readsPrec _ = parse
 
 --------------------------------------------------------------------------------
 
@@ -136,7 +136,7 @@ matchIf f = do
 {- Largely redundant since instance Read a => Parse a was introduced. -}
 {- Felt cute, might deprecate later idk -}
 reader :: Read a => Parser a
-reader = parser
+reader = Parser $ readsPrec 0
 
 {- Match any String. -}
 anything :: Parser String

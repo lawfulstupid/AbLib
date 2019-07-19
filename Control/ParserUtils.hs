@@ -24,15 +24,15 @@ letter = letter_upper <|> letter_lower
 
 -- Matches an uppercase letter
 letter_upper :: Parser Char
-letter_upper = matchOne "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+letter_upper = matchOne ['A'..'Z']
 
 -- Matches an lowercase letter
 letter_lower :: Parser Char
-letter_lower = matchOne "abcdefghijklmnopqrstuvwxyz"
+letter_lower = matchOne ['a'..'z']
 
 -- Matches a digit
 digit :: Parser Char
-digit = matchOne "0123456789"
+digit = matchOne ['0'..'9']
 
 -- Matches an alphanumeric character
 alphanum :: Parser Char
