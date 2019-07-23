@@ -15,7 +15,7 @@ import Control.Monad (MonadPlus(..), mfilter, guard)
 import Data.List (stripPrefix, nub)
 import Data.Maybe (maybeToList)
 
-import AbLib.Data.String (ToString(..))
+-- import AbLib.Data.String (ToString(..))
 import AbLib.Control.Alias ((<<))
 
 --------------------------------------------------------------------------------
@@ -41,14 +41,10 @@ class Parse a where
    parser :: Parser a
    parser = Parser parse
    
-   parse  :: ReadS a
-   parse  = apply parser
+   parse :: ReadS a
+   parse = apply parser
    
    {-# MINIMAL parser | parse #-}
-
-{- This makes it easier to define readsPrec -}
-instance Parse a => Read a where
-   readsPrec _ = parse
 
 --------------------------------------------------------------------------------
 
@@ -111,17 +107,15 @@ next = Parser $ \case
    (c:s) -> [(c,s)]
 
 {- Matches a value exactly using its String representation. -}
-match :: ToString a => a -> Parser a
-match t = let
-   t' = toString t
-   in Parser $ \s -> map (t,) . maybeToList $ stripPrefix t' s
+match :: (Parse a, Eq a) => a -> Parser a
+match t = parser >>= guard . (t ==) >> return t
 
 {- Match a given `String` and interpret it as another value. -}
-matchAs :: ToString k => k -> a -> Parser a
+matchAs :: (Parse k, Eq k) => k -> a -> Parser a
 matchAs t x = fmap (const x) $ match t
 
 {- Match one of the given values -}
-matchOne :: ToString a => [a] -> Parser a
+matchOne :: (Eq a, Parse a) => [a] -> Parser a
 matchOne = mconcat . map match
 
 {- Parses values pass a test. -}
@@ -140,7 +134,8 @@ reader = Parser $ readsPrec 0
 
 {- Match any String. -}
 anything :: Parser String
-anything = Parser $ \s -> map (`splitAt` s) [0 .. length s]
+anything = many next
+-- anything = Parser $ \s -> map (`splitAt` s) [0 .. length s]
 
 {- Attempts to use a `Parser`, and switches to the second only if the first fails. -}
 onFail :: Parser a -> Parser a -> Parser a
@@ -149,7 +144,7 @@ onFail p q = Parser $ \s -> case apply p s of
    xs -> xs
 
 {- Parse a list of parseable items using given delimitor. -}
-parseList :: ToString s => (s, s, s) -> Parser a -> Parser [a]
+parseList :: (Eq s, Parse s) => (s, s, s) -> Parser a -> Parser [a]
 parseList (left, delim, right) item = do
    match left                             -- left bracket required
    x <- return [] <|> do                  -- following is optional
@@ -158,5 +153,16 @@ parseList (left, delim, right) item = do
       return (h : t)                         -- assemble list
    match right                            -- right bracket required
    return x
+   
+
 
 --------------------------------------------------------------------------------
+
+instance Parse Char where
+   parser = next
+   
+instance Parse String where
+   parser = anything
+   
+instance Parse Int where
+   parser = Parser $ readsPrec 0
