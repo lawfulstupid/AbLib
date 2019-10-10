@@ -2,7 +2,7 @@
 
 -- Module for extending any well-ordered numerical type to include infinite values.
 
-module AbLib.Math.Extended (
+module AbLib.Data.Extended (
    Extended (..), InfinityException (..), isFinite
 ) where
 
