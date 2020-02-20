@@ -61,6 +61,10 @@ ord n a
    -- aux (1:ks) = 1
    -- aux (_:ks) = 1 + aux ks
 
+coprime :: Integral a => a -> a -> Bool
+coprime x y = 1 == gcd x y
+
 -- Euler's totient function
-phi :: Integer -> Int
-phi n = length $ filter ((==) n . denominator . flip (%) n) [1..n]
+phi :: (Integral a, Num b) => a -> b
+phi n = fromIntegral $ length $ filter (coprime n) [1..n]
+

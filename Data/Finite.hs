@@ -97,4 +97,4 @@ instance (Finite s, Finite a) => Finite (ST s a) where
    
 -- ironic
 instance (Finite a) => Finite (Extended a) where
-   domain = NegInf : PosInf : map Real domain
+   domain = [NegInf] ++ map Real domain ++ [PosInf]

@@ -83,7 +83,7 @@ showExpr [] = ""
 showExpr [x] = show x
 showExpr (x:xs) = show x ++ " + " ++ showExpr (xs)
 
-showOrder = \case {LT -> "<="; EQ -> "=="; GT -> ">"}
+showOrder = \case {LT -> "<="; EQ -> "=="; GT -> ">="}
 
 reduceExpr :: Expr -> Expr
 reduceExpr xs = a' : b'
@@ -229,7 +229,7 @@ tableau p = fromList (objRow obj : map conRow cons')
    
    conRow :: Constraint -> [Rational]
    conRow (Con e EQ b) = [b] ++ meat e
-   conRow _ = errorWithoutStackTrace "Malformed constraint"
+   conRow c = errorWithoutStackTrace ("Malformed constraint: " ++ show c)
    
    meat :: Expr -> [Rational]
    meat e = flip map vs $ flip getScale e

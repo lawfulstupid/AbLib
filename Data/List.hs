@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module AbLib.Data.List where
 
 import AbLib.Data.Tuple
@@ -6,6 +8,7 @@ import Data.Array.IO (IOArray)
 import Data.Array.MArray (readArray, writeArray, newListArray)
 import System.Random (random, randomRIO)
 import Control.Monad (forM)
+import Data.List (transpose)
 
 {- List of all possible splitAts -}
 splits :: [a] -> [([a],[a])]
@@ -60,6 +63,19 @@ rpad n x xs = take n $ xs ++ repeat x
 lpad :: Int -> a -> [a] -> [a]
 lpad n x xs = replicate (n - length ys) x ++ ys
    where ys = take n xs
+   
+data Side = L | R
+pad :: Side -> Int -> a -> [a] -> [a]
+pad R = rpad
+pad L = lpad
+
+alignColumns :: [Side] -> Char -> [[String]] -> [[String]]
+alignColumns sides c rows = transpose $ do
+   (side,col) <- zip sides $ transpose rows
+   let other = \case { L -> R; R -> L }
+   let maxlen = maximum $ map length col
+   let col' = map (pad (other side) maxlen c) col
+   return col'
 
 -- Zips up to length of longest list, using defaults to finish the shorter list.
 zipDef :: (a -> b -> c) -> (a,b) -> [a] -> [b] -> [c]
