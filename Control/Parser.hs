@@ -1,7 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module AbLib.Control.Parser
    ( module AbLib.Control.Parser
@@ -15,51 +13,49 @@ import Control.Monad (MonadPlus(..), mfilter, guard)
 import Data.List (stripPrefix, nub)
 import Data.Maybe (maybeToList)
 
--- import AbLib.Data.String (ToString(..))
 import AbLib.Control.Alias ((<<))
 
 --------------------------------------------------------------------------------
 
-newtype Parser a = Parser (String -> [(a, String)])
+newtype Parser a = Parser {runParser :: String -> Result a}
+type Result a = [(a, String)]
+
+{- Run a custom parser -}
+runParserM :: (Monad m) => Parser a -> String -> m a
+runParserM p s = case filter (null . snd) $ runParser p s of
+   [(x,"")] -> return x
+   _        -> fail "AbLib.Control.Parser.parse: no parse"
 
 {- Unpacks a Parser. -}
-apply :: Parser a -> ReadS a
-apply (Parser p) = p
-
-{- Runs a Parser, return the parsed value. -}
-fullParse :: Parser a -> String -> a
-fullParse f = maybe parseErr id . maybeParse f
-   where parseErr = errorWithoutStackTrace "AbLib.Control.Parser.fullParse: no parse"
+parseS :: (Parse a) => String -> Result a
+parseS = runParser parser
 
 {- Full Parsing in a safe way. -}
-maybeParse :: Parser a -> String -> Maybe a
-maybeParse f s = case apply f s of
-   [(x,"")] -> Just x
-   _        -> Nothing
+parseM :: (Parse a, Monad m) => String -> m a
+parseM = runParserM parser
+
+{- Equivalent to read. -}
+parse :: (Parse a) => String -> a
+parse = maybe parseErr id . parseM
+   where parseErr = errorWithoutStackTrace "AbLib.Control.Parser.parse: no parse"
 
 class Parse a where
    parser :: Parser a
-   parser = Parser parse
-   
-   parse :: ReadS a
-   parse = apply parser
-   
-   {-# MINIMAL parser | parse #-}
 
 --------------------------------------------------------------------------------
 
 instance Functor Parser where
    fmap f p = Parser $ \ s ->
-      [ (f x, r) | (x, r) <- apply p s ]
+      [ (f x, r) | (x, r) <- runParser p s ]
 
 instance Applicative Parser where
    pure x = Parser $ \ s -> [(x, s)]
    f <*> p = Parser $ \ s ->
-      [ (g x, r') | (x, r) <- apply p s, (g, r') <- apply f r ]
+      [ (g x, r') | (x, r) <- runParser p s, (g, r') <- runParser f r ]
       
 instance Alternative Parser where
    empty = Parser $ const []
-   p <|> q = Parser $ \ s -> apply p s ++ apply q s
+   p <|> q = Parser $ \ s -> runParser p s ++ runParser q s
    {- Default definitions for `many` and `some` didn't halt. -}
    many p = pure [] <|> some p   -- empty list OR at least one
    some p = do                   -- one or more
@@ -67,13 +63,20 @@ instance Alternative Parser where
       t <- many p                -- zero or more tail elements
       return (h:t)               -- stick the list together
 
-{- Repeat a parsers exactly n times -}
+{- Repeat a parsers exactly n times. -}
 exactly :: Int -> Parser a -> Parser [a]
-exactly n f = sequence $ replicate n f
+exactly n = between (n,n)
+
+{- Repeat a parser between a and b times. -}
+between :: (Int, Int) -> Parser a -> Parser [a]
+between (a,b) f = do
+   xs <- many f
+   guard (a <= length xs && length xs <= b)
+   return xs
 
 instance Monad Parser where
    fail _ = empty
-   p >>= f = Parser $ \ s -> do { (x,r) <- apply p s; apply (f x) r }
+   p >>= f = Parser $ \ s -> do { (x,r) <- runParser p s; runParser (f x) r }
 
 instance MonadPlus Parser
    {- grants access to mfilter et al. -}
@@ -90,7 +93,7 @@ optional f = matchAs "" Nothing <|> fmap Just f
 
 {- Parses without consuming characters -}
 peek :: Parser a -> Parser a
-peek f = Parser $ \s -> [ (x,s) | (x,_) <- apply f s ]
+peek f = Parser $ \s -> [ (x,s) | (x,_) <- runParser f s ]
    
 {- Applies a function to the input string -}
 inputMap :: (String -> String) -> Parser ()
@@ -139,8 +142,8 @@ anything = many next
 
 {- Attempts to use a `Parser`, and switches to the second only if the first fails. -}
 onFail :: Parser a -> Parser a -> Parser a
-onFail p q = Parser $ \s -> case apply p s of
-   [] -> apply q s
+onFail p q = Parser $ \s -> case runParser p s of
+   [] -> runParser q s
    xs -> xs
 
 {- Parse a list of parseable items using given delimitor. -}
@@ -153,7 +156,12 @@ parseList (left, delim, right) item = do
       return (h : t)                         -- assemble list
    match right                            -- right bracket required
    return x
-   
+
+maybeP :: Parser a -> Parser (Maybe a)
+maybeP f = return Nothing <|> (Just <$> f)
+
+eitherP :: Parser a -> Parser b -> Parser (Either a b)
+eitherP f g = (Left <$> f) <|> (Right <$> g)
 
 
 --------------------------------------------------------------------------------
@@ -161,8 +169,8 @@ parseList (left, delim, right) item = do
 instance Parse Char where
    parser = next
    
-instance Parse String where
-   parser = anything
+instance Parse a => Parse [a] where
+   parser = many parser
    
 instance Parse Int where
    parser = Parser $ readsPrec 0

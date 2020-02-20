@@ -18,6 +18,10 @@ whitespace = some $ matchIf isSpace
 ws :: Parser String
 ws = some $ matchOne " \t"
 
+{- Matches one newline character -}
+newline :: Parser Char
+newline = matchOne "\n\r\f"
+
 -- Matches a letter
 letter :: Parser Char
 letter = letter_upper <|> letter_lower
