@@ -1,8 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
 
 module AbLib.Data.Stack (
-   Stack, fromList, toList, newStack,
-   push, pop, peek, modifyStack
+   Stack, fromList, toList, empty,
+   modifyStack, push, pop, peek, pushMaybe
 ) where
 
 import Data.IORef
@@ -10,13 +10,10 @@ import System.IO.Unsafe
 import Data.Maybe (listToMaybe)
 import Control.Monad
 
-data Stack a = Stack {toIORef :: IORef [a]}
+newtype Stack a = Stack {toIORef :: IORef [a]}
 
 instance Show a => Show (Stack a) where
-   show = unsafeShowStack
-
-unsafeShowStack :: Show a => Stack a -> String
-unsafeShowStack = show . unsafePerformIO . toList
+   show = show . unsafePerformIO . toList
 
 fromList :: [a] -> IO (Stack a)
 fromList xs = newIORef xs >>= return . Stack
@@ -24,14 +21,20 @@ fromList xs = newIORef xs >>= return . Stack
 toList :: Stack a -> IO [a]
 toList = readIORef . toIORef
 
-newStack :: IO (Stack a)
-newStack = fromList []
+-- Requires explicit type declaration on use.
+empty :: IO (Stack a)
+empty = fromList []
 
 modifyStack :: ([a] -> [a]) -> Stack a -> IO ()
 modifyStack f = flip modifyIORef f . toIORef
 
 push :: a -> Stack a -> IO ()
 push x = modifyStack (x:)
+
+pushMaybe :: Maybe a -> Stack a -> IO ()
+pushMaybe x = case x of
+   Nothing -> const $ return ()
+   Just y  -> push y
 
 pop :: Stack a -> IO (Maybe a)
 pop s = do
