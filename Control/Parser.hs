@@ -3,17 +3,15 @@
 
 module AbLib.Control.Parser
    ( module AbLib.Control.Parser
-   , MonadPlus(..), Alternative(..), mfilter, liftA2, liftA3, guard
-   , (<<)
+   , module Control.Monad
+   , module Control.Applicative
 ) where
 
-import Control.Applicative (Alternative(..), liftA2, liftA3)
-import Control.Monad (MonadPlus(..), mfilter, guard)
+import Control.Monad
+import Control.Applicative
 
-import Data.List (stripPrefix, nub)
-import Data.Maybe (maybeToList)
-
-import AbLib.Control.Alias ((<<))
+import Data.List
+import Data.Maybe
 
 --------------------------------------------------------------------------------
 
@@ -87,10 +85,6 @@ instance Semigroup (Parser a) where
 instance Monoid (Parser a) where
    mempty = empty
    
-{- Makes a Parser optional, realised through Maybe -}
-optional :: Parser a -> Parser (Maybe a)
-optional f = matchAs "" Nothing <|> fmap Just f
-
 {- Parses without consuming characters -}
 peek :: Parser a -> Parser a
 peek f = Parser $ \s -> [ (x,s) | (x,_) <- runParser f s ]
@@ -98,6 +92,13 @@ peek f = Parser $ \s -> [ (x,s) | (x,_) <- runParser f s ]
 {- Applies a function to the input string -}
 inputMap :: (String -> String) -> Parser ()
 inputMap f = Parser $ \s -> [ ((), f s) ]
+
+{- Only returns results with minimal remaining input -}
+greedy :: Parser a -> Parser a
+greedy f = Parser $ \s -> let
+   result = sortOn (length . snd) $ runParser f s
+   maxlen = length $ snd $ head result
+   in takeWhile ((maxlen==) . length . snd) result
 
 --------------------------------------------------------------------------------
 
