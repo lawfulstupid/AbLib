@@ -49,17 +49,11 @@ instance Functor Parser where
 instance Applicative Parser where
    pure x = Parser $ \ s -> [(x, s)]
    f <*> p = Parser $ \ s ->
-      [ (g x, r') | (x, r) <- runParser p s, (g, r') <- runParser f r ]
+      [ (g x, r') | (g, r) <- runParser f s, (x, r') <- runParser p r ]
       
 instance Alternative Parser where
    empty = Parser $ const []
    p <|> q = Parser $ \ s -> runParser p s ++ runParser q s
-   {- Default definitions for `many` and `some` didn't halt. -}
-   many p = pure [] <|> some p   -- empty list OR at least one
-   some p = do                   -- one or more
-      h <- p                     -- list head
-      t <- many p                -- zero or more tail elements
-      return (h:t)               -- stick the list together
 
 {- Repeat a parsers exactly n times. -}
 exactly :: Int -> Parser a -> Parser [a]
