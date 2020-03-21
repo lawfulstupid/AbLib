@@ -1,48 +1,40 @@
-{-# LANGUAGE LambdaCase #-}
 
 module AbLib.Data.Stack (
-   Stack, fromList, toList, empty,
-   modifyStack, push, pop, peek, pushMaybe
+   Stack, fromList, toList,
+   push, pop, peek
 ) where
 
-import Data.IORef
-import System.IO.Unsafe
+import AbLib.Data.Tuple
 import Data.Maybe (listToMaybe)
-import Control.Monad
 
-newtype Stack a = Stack {toIORef :: IORef [a]}
+--------------------------------------------------------------------------------
+
+newtype Stack a = Stack [a]
+
+--------------------------------------------------------------------------------
 
 instance Show a => Show (Stack a) where
-   show = show . unsafePerformIO . toList
+   show (Stack xs) = show xs
 
-fromList :: [a] -> IO (Stack a)
-fromList xs = newIORef xs >>= return . Stack
+instance Semigroup (Stack a) where
+   Stack xs <> Stack ys = Stack (xs <> ys)
 
-toList :: Stack a -> IO [a]
-toList = readIORef . toIORef
+instance Monoid (Stack a) where
+   mempty = Stack []
 
--- Requires explicit type declaration on use.
-empty :: IO (Stack a)
-empty = fromList []
+--------------------------------------------------------------------------------
 
-modifyStack :: ([a] -> [a]) -> Stack a -> IO ()
-modifyStack f = flip modifyIORef f . toIORef
+fromList :: [a] -> Stack a
+fromList = Stack
 
-push :: a -> Stack a -> IO ()
-push x = modifyStack (x:)
+toList :: Stack a -> [a]
+toList (Stack xs) = xs
 
-pushMaybe :: Maybe a -> Stack a -> IO ()
-pushMaybe x = case x of
-   Nothing -> const $ return ()
-   Just y  -> push y
+push :: a -> Stack a -> Stack a
+push x (Stack xs) = Stack (x:xs)
 
-pop :: Stack a -> IO (Maybe a)
-pop s = do
-   x <- peek s
-   unless (null x) $ modifyStack tail s
-   return x
-   
-peek :: Stack a -> IO (Maybe a)
-peek s = do
-   xs <- toList s
-   return $ listToMaybe xs
+pop :: Stack a -> (Maybe a, Stack a)
+pop (Stack xs) = (listToMaybe, Stack) #$# splitAt 1 xs
+
+peek :: Stack a -> Maybe a
+peek = fst . pop
