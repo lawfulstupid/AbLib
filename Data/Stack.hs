@@ -1,7 +1,7 @@
 
 module AbLib.Data.Stack (
    Stack, fromList, toList,
-   push, pop, peek
+   push, pop, peek, popn
 ) where
 
 import AbLib.Data.Tuple
@@ -22,6 +22,12 @@ instance Semigroup (Stack a) where
 instance Monoid (Stack a) where
    mempty = Stack []
 
+instance Foldable Stack where
+   foldMap f (Stack xs) = foldMap f xs
+
+instance Functor Stack where
+   fmap f (Stack xs) = Stack $ fmap f xs
+
 --------------------------------------------------------------------------------
 
 fromList :: [a] -> Stack a
@@ -34,7 +40,10 @@ push :: a -> Stack a -> Stack a
 push x (Stack xs) = Stack (x:xs)
 
 pop :: Stack a -> (Maybe a, Stack a)
-pop (Stack xs) = (listToMaybe, Stack) #$# splitAt 1 xs
+pop = mfst listToMaybe . popn 1
 
 peek :: Stack a -> Maybe a
 peek = fst . pop
+
+popn :: Int -> Stack a -> ([a], Stack a)
+popn n (Stack xs) = msnd Stack $ splitAt n xs

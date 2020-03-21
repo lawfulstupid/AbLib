@@ -2,7 +2,7 @@
 module AbLib.Data.StackRef (
    Stack, fromList, toList,
    enreference, dereference,
-   push, pop, peek
+   push, pop, peek, popn
 ) where
 
 import qualified AbLib.Data.Stack as R
@@ -57,3 +57,9 @@ pop s = do
    
 peek :: Stack a -> IO (Maybe a)
 peek s = R.peek <$> dereference s
+
+popn :: Int -> Stack a -> IO [a]
+popn n s = do
+   (x,xs) <- R.popn n <$> dereference s
+   modifyStack s $ const xs
+   return x
