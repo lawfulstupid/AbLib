@@ -44,7 +44,7 @@ alphanum = letter <|> digit
 
 -- Matches a normal identifier format
 ident :: Parser String
-ident = liftA2 (:) letter $ many alphanum
+ident = liftA2 (:) letter $ many (alphanum <|> match '_')
 
 -- Matches end of input
 eof :: Parser ()
