@@ -12,6 +12,7 @@ import Control.Applicative
 
 import Data.List
 import Data.Maybe
+import Data.Ratio
 
 --------------------------------------------------------------------------------
 
@@ -169,3 +170,12 @@ instance Parse a => Parse [a] where
    
 instance Parse Int where
    parser = Parser $ readsPrec 0
+
+instance (Integral a, Read a) => Parse (Ratio a) where
+   parser = do
+      let number = greedy $ some $ matchOne ['0'..'9']
+      a <- number
+      b <- pure "" <|> (match '.' >> number)
+      let numerator = read (a ++ b)
+      let denominator = 10 ^ (length b)
+      pure (numerator % denominator)
