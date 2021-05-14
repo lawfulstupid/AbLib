@@ -8,7 +8,7 @@ import Data.Array.IO (IOArray)
 import Data.Array.MArray (readArray, writeArray, newListArray)
 import System.Random (random, randomRIO)
 import Control.Monad (forM)
-import Data.List (transpose)
+import Data.List (transpose, groupBy)
 
 {- List of all possible splitAts -}
 splits :: [a] -> [([a],[a])]
