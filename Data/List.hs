@@ -42,6 +42,9 @@ setAll :: [Int] -> [a] -> a -> [a]
 setAll [    ] xs _ = xs
 setAll (i:is) xs x = setAll is (set i xs x) x
 
+groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
+groupOn f = groupBy (\ x y -> f x == f y)
+
 -- returns list of valid indices for a given list
 indices :: [a] -> [Int]
 indices xs = [0 .. length xs - 1]
