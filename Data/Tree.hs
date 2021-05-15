@@ -1,7 +1,16 @@
+{-# LANGUAGE LambdaCase #-}
 
 module AbLib.Data.Tree where
 
-data Tree a = Tree a [Tree a] deriving (Show)
+import Data.List
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
+
+data Tree a = Tree 
+   { node :: a
+   , branches :: [Tree a]
+   } deriving (Show)
+type Forest a = [Tree a]
 
 printTree :: Show a => Tree a -> IO ()
 printTree = putStrLn . showLevel [] where
@@ -20,6 +29,3 @@ printTree = putStrLn . showLevel [] where
    getTrunkPattern [] = ""
    getTrunkPattern [b] = if b then "└─ " else "├─ "
    getTrunkPattern (b:bs) = (if b then "   " else "│  ") ++ getTrunkPattern bs
-
-
-t = Tree 120 [Tree 12 [Tree 4 [Tree 2 [], Tree 2 []], Tree 3 []], Tree 10 [Tree 5 [], Tree 2 []]]
