@@ -1,6 +1,6 @@
 
 
-module AbLib.System.Random (randomsIO, randomsRIO, randomIO, randomRIO) where
+module AbLib.System.Random (randomsIO, randomsRIO, randomIO, randomRIO, pick) where
 
 import System.Random
 
@@ -19,3 +19,9 @@ randomsIO n = sequence $ replicate n randomIO
 
 randomsRIO :: Random a => (a,a) -> Int -> IO [a]
 randomsRIO range n = sequence $ replicate n $ randomRIO range
+
+pick :: [a] -> IO a
+pick xs = do
+   n <- randomRIO (0, length xs - 1)
+   pure (xs !! n)
+
