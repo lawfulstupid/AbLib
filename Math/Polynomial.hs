@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Polynomial where
+module AbLib.Math.Polynomial where
 
 import AbLib.Data.List ((!?), zipDef, delim)
 import AbLib.Data.Tuple ((#$#))
@@ -10,22 +10,39 @@ import AbLib.Control.Alias (($>))
 
 newtype Polynomial a = Poly [a]
 
--- Produces the coefficients of a Polynomial as a list
-coeffs :: Polynomial a -> [a]
-coeffs (Poly p) = p
+data Monomial a = Mono a Int deriving (Eq)
 
--- Applies a function inside the `Poly` wrapper
+monoToPoly :: Num a => Monomial a -> Polynomial a
+monoToPoly = Poly . coeffs
+
+class Nomial p where
+   -- Produces the coefficients of a Polynomial as a list
+   coeffs :: Num a => p a -> [a]
+   -- Computes the degree of a Polynomial (deg(0) = -1)
+   deg :: (Num a, Eq a) => p a -> Int
+   -- Gets the nth coefficient of a Polynomial
+   (#) :: Num a => p a -> Int -> a
+   -- leading term (e.g. 3x^6 is expressed at (3,6))
+   lead :: (Num a, Eq a) => p a -> Monomial a
+   
+instance Nomial Polynomial where
+   coeffs (Poly p) = p
+   deg = (+(-1)) . length . dropWhile (==0) . reverse . coeffs
+   Poly p # n = maybe 0 id $ p !? n
+   lead p = let n = deg p in Mono (coeffs p !! n) n
+
+instance Nomial Monomial where
+   coeffs (Mono a n) = replicate n 0 ++ [a]
+   deg (Mono _ n) = n
+   Mono a n # k = if n == k then a else 0
+   lead = id
+
+constant :: a -> Polynomial a
+constant n = Poly [n]
+
+-- Applies a function inside the `Poly` wrapper   
 onCoeffs :: ([a] -> [b]) -> Polynomial a -> Polynomial b
 onCoeffs f (Poly p) = Poly (f p)
-
--- Computes the degree of a Polynomial
--- deg(0) = -1
-deg :: (Num a, Eq a) => Polynomial a -> Int
-deg = (+(-1)) . length . dropWhile (==0) . reverse . coeffs
-
--- Gets the nth coefficient of a Polynomial
-(#) :: (Num a) => Polynomial a -> Int -> a
-Poly p # n = maybe 0 id $ p !? n
 
 -- zip two Polynomials using a given combining function
 polyZip :: (Num a, Num b) => (a -> b -> c) -> Polynomial a -> Polynomial b -> Polynomial c
@@ -47,7 +64,34 @@ shift n p = onCoeffs ((replicate n 0 ++) . drop (-n)) p
 diff :: (Num a, Enum a) => Polynomial a -> Polynomial a
 diff = onCoeffs $ tail . zipWith (*) [0..]
 
+
 ---------- MATHEMATICAL INSTANCES ----------
+
+instance Ord a => Ord (Monomial a) where
+   Mono a n <= Mono b m = case compare n m of
+      LT -> True
+      EQ -> a <= b
+      GT -> False
+
+instance Num a => Num (Monomial a) where
+   fromInteger n = Mono (fromInteger n) 0
+   negate (Mono a n) = Mono (negate a) n
+   Mono a n + Mono b m = if n /= m
+      then error "Cannot num monomials of differing degree"
+      else Mono (a+b) n
+   Mono a n * Mono b m = Mono (a*b) (n+m)
+
+instance (Ord a, Num a) => Real (Monomial a)
+instance Enum (Monomial a)
+
+instance (Ord a, Num a, Fractional a) => Integral (Monomial a) where
+   divMod = quotRem
+   
+   quotRem (Mono a n) (Mono b m) = if n >= m
+      then (Mono (a/b) (n-m), Mono 0 0)
+      else (Mono 0 0, Mono a n)
+
+
 
 instance (Num a, Eq a) => Eq (Polynomial a) where
    Poly p == Poly q = and $ zip0 (==) p q -- need to compare the zeroes too
@@ -60,7 +104,7 @@ instance (Num a, Ord a) => Ord (Polynomial a) where
 
 -- don't want `signum` and `abs` instances, too much hassle
 instance (Num a) => Num (Polynomial a) where
-   fromInteger = pure . fromInteger
+   fromInteger = constant . fromInteger
    negate = fmap negate
    (+) = polyZip (+)
    
@@ -75,21 +119,34 @@ instance (Num a) => Num (Polynomial a) where
       c  i = (c2 i) - (c1 i) + (c0 i)
       in Poly $ [a 0] ++ map c [1..2*n-3] ++ [a $ n-1]
 
+instance (Ord a, Num a) => Real (Polynomial a)
+instance Enum (Polynomial a)
+
+instance (Ord a, Fractional a) => Integral (Polynomial a) where
+   divMod = quotRem
+   
+   quotRem p q | deg q == -1 = error "Cannot divide by 0"
+   quotRem n d = aux 0 n where
+      aux q r | r == 0 || deg r < deg d = (q,r)
+      aux q r = let
+         t = monoToPoly (lead r `div` lead d)
+         q' = q + t
+         r' = r - (t * d)
+         in aux q' r'
+
+px = Poly [-4,0,-2,1] :: Polynomial Double
+qx = Poly [-3,1] :: Polynomial Double
+
 ---------- LANGUAGE INSTANCES ----------
 
-instance Functor Polynomial where
--- fmap :: (a -> b) -> Polynomial a -> Polynomial b
-   fmap f = onCoeffs $ map f
+instance Functor Monomial where
+   fmap f (Mono a n) = Mono (f a) n
 
-instance Applicative Polynomial where
--- pure :: a -> Polynomial a
-   pure n = Poly [n]
--- (<*>) :: Polynomial (a -> b) -> Polynomial a -> Polynomial b
-   Poly f <*> Poly p = Poly (f <*> p)
-   
-instance Monad Polynomial where
--- (>>=) :: Polynomial a -> (a -> Polynomial b) -> Polynomial b
-   Poly p >>= f = Poly (p >>= coeffs . f)
+instance (Show a, Ord a, Num a) => Show (Monomial a) where
+   show = show . monoToPoly
+
+instance Functor Polynomial where
+   fmap f = onCoeffs $ map f
    
 instance Foldable Polynomial where
 -- foldr :: (a -> b -> b) -> b -> Polynomial a -> b
@@ -155,15 +212,3 @@ instance (Num a, Read a) => Read (Polynomial a) where
       full ["",n]  = full ["1",n]   -- if there was nothing to the left of 'x'
       full ["-",n] = full ["-1",n]  -- if there was only '-' to the left of 'x'
       full [c,n]   = (c, n)         -- repackage as tuple
-
-
-   
-   
-
-
-
-
-
-
-
-

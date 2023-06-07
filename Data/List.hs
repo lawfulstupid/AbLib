@@ -104,6 +104,15 @@ splitBy f (x:xs) = if f x
    else (ys, x:ns)
    where (ys, ns) = splitBy f xs
 
+-- Returns all the ways to choose n items from a list (no duplicates)
+choose :: Int -> [a] -> [[a]]
+choose 0 [] = [[]]
+choose _ [] = []
+choose n (x:xs) = let
+   include = map (x:) $ choose (n-1) xs
+   exclude = choose n xs
+   in include ++ exclude
+
 -- Picks a number of random items from a list, without repetition.
 sample :: Int -> [a] -> IO [a]
 sample k xs = do

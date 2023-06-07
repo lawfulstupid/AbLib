@@ -25,3 +25,10 @@ pick xs = do
    n <- randomRIO (0, length xs - 1)
    pure (xs !! n)
 
+shuffle :: [a] -> IO [a]
+shuffle [] = pure []
+shuffle xs = do
+   i <- randomRIO (0, length xs - 1)
+   let (a,x:b) = splitAt i xs
+   xs' <- shuffle (a ++ b)
+   pure (x:xs')

@@ -12,6 +12,9 @@ data Tree a = Tree
    } deriving (Show)
 type Forest a = [Tree a]
 
+instance Functor Tree where
+   fmap f (Tree x b) = Tree (f x) (fmap f <$> b)
+
 printTree :: Show a => Tree a -> IO ()
 printTree = putStrLn . showLevel [] where
    showLevel :: Show a => [Bool] -> Tree a -> String
