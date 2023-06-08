@@ -1,6 +1,4 @@
-
-
-module AbLib.System.Random (randomsIO, randomsRIO, randomIO, randomRIO, pick) where
+module AbLib.System.Random where
 
 import System.Random
 
@@ -24,6 +22,14 @@ pick :: [a] -> IO a
 pick xs = do
    n <- randomRIO (0, length xs - 1)
    pure (xs !! n)
+
+pickWeighted :: (Num b, Ord b, Random b) => (a -> b) -> [a] -> IO a
+pickWeighted f list = randomRIO (0, sum $ map f list) >>= selectWeighted list
+   where
+   selectWeighted (x:xs) p = let w = f x in if p < w
+      then pure x
+      else selectWeighted xs (p - w)
+   selectWeighted [] _ = pickWeighted f list
 
 shuffle :: [a] -> IO [a]
 shuffle [] = pure []
