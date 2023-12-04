@@ -1,7 +1,7 @@
 
 module AbLib.Data.StackRef (
    Stack, fromList, toList,
-   enreference, dereference,
+   enreference, modifyStack, dereference,
    push, pop, peek, popn
 ) where
 

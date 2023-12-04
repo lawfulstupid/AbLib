@@ -1,7 +1,7 @@
 
 module AbLib.Data.Stack (
    Stack, fromList, toList,
-   push, pop, peek, popn
+   push, pushAll, pop, peek, popn, lift
 ) where
 
 import AbLib.Data.Tuple
@@ -45,5 +45,11 @@ pop = mfst listToMaybe . popn 1
 peek :: Stack a -> Maybe a
 peek = fst . pop
 
+pushAll :: [a] -> Stack a -> Stack a
+pushAll xs s = foldr push s xs
+
 popn :: Int -> Stack a -> ([a], Stack a)
 popn n (Stack xs) = msnd Stack $ splitAt n xs
+
+lift :: ([a] -> [b]) -> Stack a -> Stack b
+lift f (Stack s) = Stack (f s)
