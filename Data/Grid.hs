@@ -111,3 +111,9 @@ diagonals g = let
 
 indices :: Grid a -> [Coords]
 indices g = [(x,y) | x <- [0 .. width g - 1], y <- [0 .. height g - 1]]
+
+getPos :: Eq a => a -> Grid a -> Coords
+getPos x g = head $ filter (\p -> g #! p == x) $ indices g
+
+contains :: (a -> Bool) -> Grid a -> Bool
+contains f = foldr (\cell cur -> cur || f cell) False
