@@ -9,12 +9,12 @@
 
 -- TL;DR: deprecated
 
-module Math.OrdSet (
+module AbLib.Set.OrdSet (
    OrdSet, Interval, Bound, BoundType (Open, Closed), -- types
-   empty, singleton, total, interval,                 -- construction
-   isEmpty, nonEmpty, contains, subset, distinct,     -- predicates
-   union, intersect, difference, complement,          -- operations
-   infsup, supinf, sup, inf, range, lift              -- other
+   empty, singleton, interval, fromInterval, fromIntervals, -- construction
+   isEmpty, contains, subset, distinct,     -- predicates
+   union, intersect, complement,          -- operations
+   infsup, sup, inf, range, lift, mapIntervals -- other
 ) where
 
 import AbLib.Set.Set
@@ -25,7 +25,7 @@ import GHC.Base (liftA2)
 newtype OrdSet a = Union [Interval a]
 type Interval a = (Bound a, Bound a)
 type Bound a = (a, BoundType)
-data BoundType = Open | Closed deriving (Eq)
+data BoundType = Open | Closed deriving (Show,Eq,Ord)
 
 intervals :: OrdSet a -> [Interval a]
 intervals (Union set) = set
@@ -54,9 +54,9 @@ instance Show a => Show (OrdSet a) where
          
 instance Ord a => Eq (OrdSet a) where
    Union x == Union y = f x == f y where
-      f = sortOn (both fst)
+      f = sortOn (fst $#)
 
-instance Set (OrdSet a) a where
+instance Ord a => Set (OrdSet a) a where
    empty = Union []
    singleton x = Union [( (x, Closed), (x, Closed) )]
    isEmpty = null . intervals
@@ -66,9 +66,9 @@ instance Set (OrdSet a) a where
          low = a < x || x == a && ta == Closed  -- both of these are satisfied
          upp = x < b || x == b && tb == Closed  --    iff x is in this interval
 
-   union sets = Union $ reduce   -- combine overlapping intervals, return
-      $ sortOn (both fst)        -- sort by (inf,sup)
-      $ foldMap intervals sets   -- make flat list of all intervals involved
+   union a b = Union $ reduce   -- combine overlapping intervals, return
+      $ sortOn (fst $#)          -- sort by (inf,sup)
+      $ foldMap intervals [a,b]   -- make flat list of all intervals involved
     where
       reduce :: Ord a => [Interval a] -> [Interval a]         -- combines overlaps
       reduce [] = []
@@ -82,12 +82,10 @@ instance Set (OrdSet a) a where
             then x : reduce (y:is)                            -- x done, union remainder
             else reduce ((lo,hi) : is)                        -- combine x,y, repeat
 
-   intersect sets = if null sets
-      then empty
-      else foldr1 aux sets
+   intersect a b = foldr1 aux [a,b]
     where
       aux :: Ord a => OrdSet a -> OrdSet a -> OrdSet a
-      aux (Union xs) (Union ys) = union [int x y | x <- xs, y <- ys]
+      aux (Union xs) (Union ys) = unions [int x y | x <- xs, y <- ys]
       int :: Ord a => Interval a -> Interval a -> OrdSet a    -- intersect intervals
       int x y = let
          a = last $ sortBy (boundOrd Closed) $ map fst [x,y]  -- greatest lower bound
@@ -95,10 +93,10 @@ instance Set (OrdSet a) a where
          in interval a b
 
    complement x s = let
-      r@(Union [(lo,hi)]) = range $ union [x,s]
+      r@(Union [(lo,hi)]) = range $ union x s
       s1 = (sortOn (fst . fst) $ intervals s) >>= \(a,b) -> [a,b]
       s2 = [lo] ++ map swap s1 ++ [hi]
-      in intersect [x, union $ build s2]
+      in intersect x (unions $ build s2)
     where
       build :: Ord a => [Bound a] -> [OrdSet a]
       build [] = []
@@ -107,7 +105,7 @@ instance Set (OrdSet a) a where
       swap (x,Open) = (x,Closed)
       swap (x,Closed) = (x,Open)
    
-   infsup (Union set) = case map (both fst) set of
+   infsup (Union set) = case map (fst $#) set of
       [] -> Nothing
       xs -> Just $ foldr1 aux xs where                -- fold into min/max
          aux :: Ord a => (a, a) -> (a, a) -> (a, a)
@@ -127,3 +125,15 @@ interval (a,ta) (b,tb) = Union $
    if a < b || (a == b && ta == Closed && tb == Closed)
    then [( (a,ta), (b,tb) )]
    else []
+
+fromInterval :: Ord a => Interval a -> OrdSet a
+fromInterval = uncurry interval
+
+fromIntervals :: Ord a => [Interval a] -> OrdSet a
+fromIntervals = foldr union empty . map fromInterval
+
+mapIntervals :: (Interval a -> Interval b) -> OrdSet a -> OrdSet b
+mapIntervals f s = fromIntervals $ map f $ intervals s
+
+intCompare :: Interval a -> Interval a -> ?
+intCompare ((a1,ta1),(b1,tb1)) ((a2,ta2),())

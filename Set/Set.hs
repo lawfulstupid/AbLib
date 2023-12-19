@@ -30,6 +30,8 @@ class Set s a | s -> a where
    
    -- Compute the union of two sets.
    union          :: Eq a => s -> s -> s
+   unions         :: Eq a => [s] -> s
+   unions = foldr union empty
    -- Compute the intersection of two sets.
    intersect      :: Eq a => s -> s -> s
    -- Compute the difference between two sets.

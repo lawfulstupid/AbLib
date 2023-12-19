@@ -7,6 +7,7 @@ module AbLib.Data.Grid where
 import qualified Data.List as List
 import Data.List (intersperse, intercalate, unlines)
 import Control.Applicative (liftA2)
+import Data.Maybe (catMaybes)
 
 type Coords = (Int, Int)
 
@@ -117,3 +118,9 @@ getPos x g = head $ filter (\p -> g #! p == x) $ indices g
 
 contains :: (a -> Bool) -> Grid a -> Bool
 contains f = foldr (\cell cur -> cur || f cell) False
+
+findAll :: (a -> Bool) -> Grid a -> [Coords]
+findAll f g = filter (\p -> f (g #! p)) $ indices g
+
+neighbourhood :: Coords -> Grid a -> [a]
+neighbourhood (x,y) g = catMaybes [g # (x+dx,y+dy) | dx <- [-1..1], dy <- [-1..1]]
