@@ -19,8 +19,8 @@ data GridInfo = GridInfo
    , gridLines' :: Bool
    } deriving (Show, Eq)
 
-disableGridLines :: Grid a -> Grid a
-disableGridLines (Grid (GridInfo c _) g) = Grid (GridInfo c False) g
+setGridLines :: Bool -> Grid a -> Grid a
+setGridLines b (Grid (GridInfo c _) g) = Grid (GridInfo c b) g
 
 gridLines :: Grid a -> Bool
 gridLines (Grid i _) = gridLines' i
