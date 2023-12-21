@@ -11,14 +11,27 @@ import Data.Maybe (catMaybes)
 
 type Coords = (Int, Int)
 
-data Grid a = Grid Coords [[a]]
-   deriving (Eq)   
+data Grid a = Grid GridInfo [[a]]
+   deriving (Eq)
+
+data GridInfo = GridInfo
+   { dimensions' :: Coords
+   , gridLines' :: Bool
+   } deriving (Show, Eq)
+
+disableGridLines :: Grid a -> Grid a
+disableGridLines (Grid (GridInfo c _) g) = Grid (GridInfo c False) g
+
+gridLines :: Grid a -> Bool
+gridLines (Grid i _) = gridLines' i
    
 instance Show a => Show (Grid a) where
    show g = showRows $ map (zip colWidths) rows
       where
       rows = toList (show <$> g)
       colWidths = map (maximum . map length) $ List.transpose rows
+      cellSep = if gridLines g then "|" else ""
+      padding = if gridLines g then " " else ""
       
       topRow = genericRow ' ' ' ' '╷' ' '
       sepRow = genericRow '╶' '─' '┼' '╴'
@@ -31,11 +44,14 @@ instance Show a => Show (Grid a) where
 
       showRows :: [[(Int,String)]] -> String
       showRows rs = let
-         bulk = intersperse sepRow $ map showRow rs
-         in unlines ([topRow] ++ bulk ++ [botRow])
+         content = map showRow rs
+         bulk = intersperse sepRow content
+         in if gridLines g
+            then unlines ([topRow] ++ bulk ++ [botRow])
+            else unlines content
 
       showRow :: [(Int,String)] -> String
-      showRow r = " " ++ (intercalate "│" $ map showCell r) ++ " "
+      showRow r = padding ++ (intercalate cellSep $ map showCell r) ++ padding
 
       showCell :: (Int,String) -> String
       showCell (n,c) = pad n c
@@ -44,13 +60,13 @@ instance Show a => Show (Grid a) where
       pad n s = replicate (n - length s) ' ' ++ s
 
 instance Functor Grid where
-   fmap f (Grid d g) = Grid d [[f c | c <- r] | r <- g]
+   fmap f (Grid i g) = Grid i [[f c | c <- r] | r <- g]
    
 instance Foldable Grid where
    foldMap f = foldMap (foldMap f) . toList
 
 dimensions :: Grid a -> Coords
-dimensions (Grid d _) = d
+dimensions (Grid i _) = dimensions' i
 
 width :: Grid a -> Int
 width = fst . dimensions
@@ -68,13 +84,13 @@ fromList g = let
    width = head widths
    consistent = all (width==) widths
    in if height == 0
-      then Grid (0,0) g
+      then Grid (GridInfo (0,0) True) g
       else if consistent
-      then Grid (width,height) g
+      then Grid (GridInfo (width,height) True) g
       else errorWithoutStackTrace "Inconsistent width"
 
 grid :: Coords -> a -> Grid a
-grid (w,h) x = Grid (w,h) $ replicate h $ replicate w x
+grid (w,h) x = Grid (GridInfo (w,h) True) $ replicate h $ replicate w x
 
 (#) :: Grid a -> Coords -> Maybe a
 (#) g (x,y) = if 0 <= x && x < width g && 0 <= y && y < height g
@@ -88,14 +104,16 @@ set :: Grid a -> Coords -> a -> Grid a
 set g p c = setBy g p $ const c
 
 setBy :: Grid a -> Coords -> (a -> a) -> Grid a
-setBy g@(Grid d _) p f = Grid d $ do
+setBy g@(Grid i _) p f = Grid i $ do
    y <- [0 .. height g - 1]
    return $ do 
       x <- [0 .. width g - 1]
       [(if (x,y) == p then f else id) (g #! (x,y))]
 
 transpose :: Grid a -> Grid a
-transpose (Grid (w,h) g) = Grid (h,w) $ List.transpose g
+transpose (Grid i g) = Grid (aux i) $ List.transpose g
+   where
+   aux (GridInfo (w,h) l) = GridInfo (h,w) l
 
 rows :: Grid a -> [[a]]
 rows = toList
