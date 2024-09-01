@@ -39,6 +39,9 @@ isFinite :: Extended a -> Bool
 isFinite (Real _) = True
 isFinite (infval) = False
 
+isInfinite :: Extended a -> Bool
+isInfinite = not . isFinite
+
 -- Doesn't always behave great, but you get the idea.
 instance Functor Extended where
    fmap f (Real x) = Real $ f x
