@@ -38,9 +38,7 @@ nan = Real $ asin 2     -- need a NaN value for Floating instance
 isFinite :: Extended a -> Bool
 isFinite (Real _) = True
 isFinite (infval) = False
-
-isInfinite :: Extended a -> Bool
-isInfinite = not . isFinite
+-- no 'isInfinite' because it conflicts with a built-in function
 
 -- Doesn't always behave great, but you get the idea.
 instance Functor Extended where
