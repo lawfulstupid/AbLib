@@ -6,6 +6,7 @@ module AbLib.Data.Extended (
    Extended (..), InfinityException (..), isFinite
 ) where
 
+import System.Random
 import Control.Exception (Exception, throw)
 
 data Extended a = NegInf | Real {real :: a} | PosInf
@@ -135,3 +136,15 @@ instance Integral a => Integral (Extended a) where
 instance Bounded (Extended a) where
    minBound = NegInf
    maxBound = PosInf
+
+instance Random a => Random (Extended a) where
+   random g = let (x, g') = random g in (Real x, g')
+   randomR bounds g = case bounds of
+      (NegInf, PosInf) -> random g
+      (NegInf, _) -> let (x, g') = random g in (coerce x NegInf, g')
+      (_, PosInf) -> let (x, g') = random g in (coerce x PosInf, g')
+      (Real a, Real b) -> let (x, g') = randomR (a,b) g in (Real x, g')
+      
+      where
+      coerce :: Extended a -> Extended a -> Extended a
+      coerce x i = i
